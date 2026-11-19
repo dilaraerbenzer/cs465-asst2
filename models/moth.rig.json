@@ -1,0 +1,298 @@
+{
+  "parts": [
+    {
+      "name": "thorax",
+      "parent": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "color": [
+        0.14,
+        0.06,
+        0.16
+      ]
+    },
+    {
+      "name": "head",
+      "parent": "thorax",
+      "pivot": [
+        0,
+        0.02,
+        0.28
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "antenna_L",
+      "parent": "head",
+      "pivot": [
+        0.06,
+        0.14,
+        0.5
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "antenna_R",
+      "parent": "head",
+      "pivot": [
+        -0.06,
+        0.14,
+        0.5
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "abdomen",
+      "parent": "thorax",
+      "pivot": [
+        0,
+        0,
+        -0.25
+      ],
+      "color": [
+        0.25,
+        0.1,
+        0.28
+      ]
+    },
+    {
+      "name": "forewing_L",
+      "parent": "thorax",
+      "pivot": [
+        0.16,
+        0.14,
+        0.08
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "hindwing_L",
+      "parent": "thorax",
+      "pivot": [
+        0.16,
+        0.12,
+        -0.12
+      ],
+      "color": [
+        0.25,
+        0.1,
+        0.28
+      ]
+    },
+    {
+      "name": "forewing_R",
+      "parent": "thorax",
+      "pivot": [
+        -0.16,
+        0.14,
+        0.08
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "hindwing_R",
+      "parent": "thorax",
+      "pivot": [
+        -0.16,
+        0.12,
+        -0.12
+      ],
+      "color": [
+        0.25,
+        0.1,
+        0.28
+      ]
+    },
+    {
+      "name": "leg_front_upper_L",
+      "parent": "thorax",
+      "pivot": [
+        0.14,
+        -0.12,
+        0.15
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "leg_front_lower_L",
+      "parent": "leg_front_upper_L",
+      "pivot": [
+        0.45,
+        0.0,
+        0.4
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "leg_mid_upper_L",
+      "parent": "thorax",
+      "pivot": [
+        0.14,
+        -0.12,
+        0.0
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "leg_mid_lower_L",
+      "parent": "leg_mid_upper_L",
+      "pivot": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "leg_hind_upper_L",
+      "parent": "thorax",
+      "pivot": [
+        0.14,
+        -0.12,
+        -0.15
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "leg_hind_lower_L",
+      "parent": "leg_hind_upper_L",
+      "pivot": [
+        0.45,
+        0.0,
+        -0.4
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "leg_front_upper_R",
+      "parent": "thorax",
+      "pivot": [
+        -0.14,
+        -0.12,
+        0.15
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "leg_front_lower_R",
+      "parent": "leg_front_upper_R",
+      "pivot": [
+        -0.45,
+        0.0,
+        0.4
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "leg_mid_upper_R",
+      "parent": "thorax",
+      "pivot": [
+        -0.14,
+        -0.12,
+        0.0
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "leg_mid_lower_R",
+      "parent": "leg_mid_upper_R",
+      "pivot": [
+        -0.45,
+        0.0,
+        0.0
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    },
+    {
+      "name": "leg_hind_upper_R",
+      "parent": "thorax",
+      "pivot": [
+        -0.14,
+        -0.12,
+        -0.15
+      ],
+      "color": [
+        0.08,
+        0.07,
+        0.09
+      ]
+    },
+    {
+      "name": "leg_hind_lower_R",
+      "parent": "leg_hind_upper_R",
+      "pivot": [
+        -0.45,
+        0.0,
+        -0.4
+      ],
+      "color": [
+        0.85,
+        0.82,
+        0.76
+      ]
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+# Modeling the goth moth in Blender (Part 1)
+
+The app loads two files:
+
+| File | What it holds |
+|---|---|
+| `models/moth.obj` | the geometry, one `o <name>` block per movable part |
+| `models/moth.rig.json` | each part's parent, pivot (joint position) and colour |
+
+Right now these are a **placeholder** moth made from primitives by
+`tools/make_placeholder_moth.py`. Replace them with the Blender export and
+nothing else needs to change, as long as the rules below are followed.
+
+## Rules for the .blend file
+
+1. **One mesh object per joint/part.** Something that moves on its own must be
+   its own object. Things that never move separately (eyes on the head, fur
+   tufts on the thorax) can be joined into their parent part (Ctrl+J).
+2. **Name objects exactly like the part names** (keep the same names so the
+   animation and UI code keeps working):
+
+   ```
+   thorax                       (root)
+   ├── head
+   │   ├── antenna_L
+   │   └── antenna_R
+   ├── abdomen
+   ├── forewing_L   forewing_R
+   ├── hindwing_L   hindwing_R
+   └── leg_{front,mid,hind}_upper_{L,R}
+       └── leg_{front,mid,hind}_lower_{L,R}
+   ```
+
+   No spaces or dots in names (Blender's `.001` suffixes too). You may add
+   *more* parts (e.g. `leg_front_tarsus_L`, `abdomen_tip`, a split wing). Just
+   parent them correctly. More joints = better model-complexity grade.
+3. **Put each object's origin at its joint.** Wing origin at the wing root,
+   upper-leg origin at the hip, lower-leg origin at the knee, head origin at
+   the neck. Object mode → select object → place 3D cursor at the joint
+   (Shift+S → Cursor to Selected, on a vertex in Edit mode) → Object → Set
+   Origin → Origin to 3D Cursor.
+4. **Parent like the tree above.** Select child, then shift-select parent,
+   Ctrl+P → *Object (Keep Transform)*.
+5. **Rest pose.** Model with the wings spread flat and the legs in a neutral
+   pose. Apply rotation & scale (Ctrl+A → Rotation & Scale) on every object
+   but **not location** (that would reset the origins).
+6. **Orientation.** In Blender, the head points toward Blender **−Y** (the
+   front view, numpad 1, looks at the face), up is +Z, the moth's left side is
+   +X. After export this becomes head → +Z, up → +Y, which the app expects.
+   Keep the thorax roughly at the world origin and the whole moth about
+   2–3 units long.
+7. **Keep it light.** WebGL loads the OBJ in the browser. Aim for under
+   ~50k triangles total. Don't apply a Subdivision modifier above level 1–2.
+   Use *Shade Smooth* (or *Shade Auto Smooth*) so the normals export smooth.
+8. **Materials.** Give each part a material. The export script reads the
+   Principled BSDF *Base Color* as the part's colour. If you UV-unwrap and paint
+   textures, those UVs are exported too (useful for the textured rendering in Part 2).
+
+## Exporting
+
+1. Save the .blend inside the repo (e.g. `blender/moth.blend`). The script
+   writes to `models/` next to it, so set `EXPORT_DIR` in the script to
+   `"//../models"` in that case.
+2. Scripting workspace → open `tools/blender_export_rig.py` → Run Script.
+3. Start a local server from the repo root and open the page:
+
+   ```bash
+   python3 -m http.server 8000
+   ```
+
+   then go to http://localhost:8000. Pick parts in the **Rig check** panel and
+   drag the sliders, or tick *Wiggle all joints*. Every part should rotate
+   around its own joint and carry its children with it. If a part swings
+   around the wrong point, its origin is wrong in Blender (rule 3). If it
+   doesn't follow its parent, its parenting is wrong (rule 4).
+
+## For the demo: how the hierarchy works
+
+* The OBJ is in world space. At load time each part's vertices are shifted by
+  `-pivot`, so the part's local origin is its joint (`js/model.js`, `upload`).
+* Each part stores `offset = pivot - parent.pivot` plus joint parameters
+  `rotation` and `translation`.
+  Local matrix: `L = T(offset + translation) · Rz · Ry · Rx`.
+* Drawing is a recursive tree traversal with a matrix stack
+  (`MothModel.traverse`): push the current matrix, multiply by `L`, draw the
+  part, recurse into the children, pop. That is the same scheme as
+  `figure.js` from the course samples (chapter 09).
+* `model.getPose()` / `model.setPose()` return and set every joint's
+  parameters. That's the data a keyframe stores, for the animation part.

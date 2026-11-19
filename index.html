@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Goth Moth</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #1c1a21; color: #ddd; font: 13px system-ui, sans-serif; }
+    #app { display: flex; height: 100%; }
+    #gl { flex: 1; min-width: 0; display: block; cursor: grab; }
+    #panel { width: 240px; padding: 12px; background: #26232c; overflow-y: auto; }
+    #panel h2 { font-size: 14px; margin: 0 0 8px; }
+    #panel label { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+    #panel select { width: 100%; font-family: monospace; }
+    #panel input[type=range] { flex: 1; }
+    #panel span { width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+    #status { color: #9a93a8; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="gl"></canvas>
+    <div id="panel">
+      <h2>Rig check</h2>
+      <select id="part" size="12"></select>
+      <label>X <input id="rx" type="range" min="-180" max="180" step="1"><span></span></label>
+      <label>Y <input id="ry" type="range" min="-180" max="180" step="1"><span></span></label>
+      <label>Z <input id="rz" type="range" min="-180" max="180" step="1"><span></span></label>
+      <label><input id="wiggle" type="checkbox"> Wiggle all joints</label>
+      <button id="reset">Reset pose</button>
+      <div id="status">Loading…</div>
+      <p style="color:#9a93a8">Drag: orbit · Shift+drag: pan · Wheel: zoom</p>
+    </div>
+  </div>
+  <script src="js/math.js"></script>
+  <script src="js/obj-loader.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

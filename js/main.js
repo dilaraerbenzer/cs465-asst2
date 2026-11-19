@@ -1,16 +1,21 @@
 //
-//  main.js : WebGL setup, lighting, camera and render loop.
+//  main.js : WebGL setup, rendering, picking, mouse and UI.
 //
 //  The init()/render() structure, the lighting setup (light and material
-//  products) and the spherical camera (radius, theta, phi + lookAt) follow
-//  Angel & Shreiner Chapter 6, shadedSphere4.js, and Chapter 9, figure.js.
-//  Our modifications:
-//    - the model is loaded from models/moth.obj + models/moth.rig.json
-//    - material colour is per part (diffuseProduct set in drawPart)
-//    - the camera's angles and radius are changed with the mouse instead of
-//      buttons, and there is a pan offset (at)
-//    - a "rig check" panel (part list + x/y/z sliders) to test the joints;
-//      the full UI and animation (parts 3-4 of the assignment) go on top
+//  products), configureTexture() and the spherical camera (radius, theta,
+//  phi + lookAt) follow Angel & Shreiner: Chapter 6 shadedSphere4.js,
+//  Chapter 7 textureCube1.js and Chapter 9 figure.js.
+//
+//  Ported from Furkan's furkan.html, adapted to this structure:
+//    - the four render modes (colour / unlit texture / smooth shading /
+//      shaded texture) and the selected-part highlight
+//    - picking by drawing every part in its own id colour and reading the
+//      pixel under the mouse (gl.readPixels)
+//    - direct manipulation: drag a selected part to rotate its joint
+//    - camera: orbit (drag empty space), pan (right/middle or Shift+drag),
+//      zoom (wheel)
+//    - joint sliders for the selected part, global position/orientation
+//      sliders, keyframe list and animation controls (see animation.js)
 //
 
 "use strict";
@@ -21,27 +26,32 @@ var program;
 
 var projectionMatrix;
 var modelViewMatrixLoc, projectionMatrixLoc, normalMatrixLoc;
-var ambientProductLoc, diffuseProductLoc, specularProductLoc, useTextureLoc;
+var renderModeLoc, materialColorLoc, pickColorLoc, selectedLoc;
 var vPosition, vNormal, vTexCoord;
 
-// Light and material, as in shadedSphere4.js
+// Light and material, as in shadedSphere4.js (material is white: the part's
+// colour or texture is multiplied in by the fragment shader)
 var lightPosition = vec4( 1.0, 2.0, 1.5, 0.0 );
 var lightAmbient  = vec4( 0.25, 0.22, 0.28, 1.0 );
 var lightDiffuse  = vec4( 1.0, 1.0, 1.0, 1.0 );
 var lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
 
+var materialAmbient   = vec4( 1.0, 1.0, 1.0, 1.0 );
+var materialDiffuse   = vec4( 1.0, 1.0, 1.0, 1.0 );
 var materialSpecular  = vec4( 0.4, 0.4, 0.4, 1.0 );
 var materialShininess = 32.0;
 
 // Camera: spherical coordinates around "at" (shadedSphere4.js uses radius, theta, phi)
 var radius = 4.0;
 var camTheta = 35.0;     // degrees around the y axis
-var camPhi = 25.0;       // degrees above the ground
+var camPhi = 20.0;       // degrees above the ground
 var at = [ 0.0, 0.0, -0.2 ];
 var up = [ 0.0, 1.0, 0.0 ];
 
+var renderMode = 3;
 var selectedId = 0;
-var startTime;
+var pickingPass = false;
+var lastTime = 0;
 
 
 window.onload = function init() {
@@ -52,7 +62,6 @@ window.onload = function init() {
     gl = ( typeof WebGLUtils !== "undefined" ) ? WebGLUtils.setupWebGL( canvas ) : canvas.getContext( "webgl" );
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
-    gl.viewport( 0, 0, canvas.width, canvas.height );
     gl.clearColor( 0.11, 0.1, 0.13, 1.0 );
     gl.enable( gl.DEPTH_TEST );
 
@@ -69,18 +78,17 @@ window.onload = function init() {
     modelViewMatrixLoc  = gl.getUniformLocation( program, "modelViewMatrix" );
     projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
     normalMatrixLoc     = gl.getUniformLocation( program, "normalMatrix" );
-    ambientProductLoc   = gl.getUniformLocation( program, "ambientProduct" );
-    diffuseProductLoc   = gl.getUniformLocation( program, "diffuseProduct" );
-    specularProductLoc  = gl.getUniformLocation( program, "specularProduct" );
-    useTextureLoc       = gl.getUniformLocation( program, "useTexture" );
-    gl.uniform1i( gl.getUniformLocation( program, "texture" ), 0 );
+    renderModeLoc       = gl.getUniformLocation( program, "renderMode" );
+    materialColorLoc    = gl.getUniformLocation( program, "materialColor" );
+    pickColorLoc        = gl.getUniformLocation( program, "pickColor" );
+    selectedLoc         = gl.getUniformLocation( program, "selected" );
 
-    gl.uniform4fv( specularProductLoc, flatten( mult( lightSpecular, materialSpecular ) ) );
+    gl.uniform4fv( gl.getUniformLocation( program, "ambientProduct" ), flatten( mult( lightAmbient, materialAmbient ) ) );
+    gl.uniform4fv( gl.getUniformLocation( program, "diffuseProduct" ), flatten( mult( lightDiffuse, materialDiffuse ) ) );
+    gl.uniform4fv( gl.getUniformLocation( program, "specularProduct" ), flatten( mult( lightSpecular, materialSpecular ) ) );
     gl.uniform4fv( gl.getUniformLocation( program, "lightPosition" ), flatten( lightPosition ) );
     gl.uniform1f( gl.getUniformLocation( program, "shininess" ), materialShininess );
-
-    projectionMatrix = perspective( 45.0, canvas.width / canvas.height, 0.05, 100.0 );
-    gl.uniformMatrix4fv( projectionMatrixLoc, false, flatten( projectionMatrix ) );
+    gl.uniform1i( gl.getUniformLocation( program, "texture" ), 0 );
 
     setupMouse();
 
@@ -93,9 +101,9 @@ window.onload = function init() {
     ] ).then( function ( files ) {
         buildMoth( gl, files[1], loadOBJ( files[0] ), drawPart );
         loadTextures();
-        setupRigPanel();
-        startTime = Date.now();
-        render();
+        selectedId = rootId;
+        setupUI();
+        requestAnimationFrame( render );
     } ).catch( function ( e ) {
         document.getElementById( "status" ).textContent =
             "Could not load the model (" + e + "). Serve the folder over http, e.g. python3 -m http.server";
@@ -116,6 +124,7 @@ function drawPart( Id ) {
 
     var instanceMatrix = modelViewMatrix;
     gl.uniformMatrix4fv( modelViewMatrixLoc, false, flatten( instanceMatrix ) );
+
     // Normal matrix = upper-left 3x3 of the model-view matrix, as in
     // shadedSphere4.js. This is valid because the model only uses rotations
     // and translations (no scaling). Built with mat3() so flatten() transposes
@@ -127,15 +136,22 @@ function drawPart( Id ) {
                         m[2][0], m[2][1], m[2][2] );
     gl.uniformMatrix3fv( normalMatrixLoc, false, flatten( nMatrix ) );
 
-    // With a texture the material is white and the texture gives the colour.
-    var textured = partTexture[Id] && document.getElementById( "textures" ).checked;
-    var materialColor = textured ? vec4( 1.0, 1.0, 1.0, 1.0 ) : partColor[Id];
-    gl.uniform4fv( ambientProductLoc, flatten( mult( lightAmbient, materialColor ) ) );
-    gl.uniform4fv( diffuseProductLoc, flatten( mult( lightDiffuse, materialColor ) ) );
-    gl.uniform1f( useTextureLoc, textured ? 1.0 : 0.0 );
-    if ( textured ) {
-        gl.activeTexture( gl.TEXTURE0 );
-        gl.bindTexture( gl.TEXTURE_2D, partTexture[Id] );
+    if ( pickingPass ) {
+        // id colour: red channel = Id + 1 (0 = background)
+        gl.uniform1i( renderModeLoc, 4 );
+        gl.uniform4fv( pickColorLoc, flatten( vec4( ( Id + 1 ) / 255.0, 0.0, 0.0, 1.0 ) ) );
+    } else {
+        // texture modes fall back to the colour version until the image has loaded
+        var mode = renderMode;
+        var texturedMode = ( mode == 1 || mode == 3 );
+        if ( texturedMode && !partTexture[Id] ) mode = ( mode == 1 ) ? 0 : 2;
+        gl.uniform1i( renderModeLoc, mode );
+        gl.uniform4fv( materialColorLoc, flatten( partColor[Id] ) );
+        gl.uniform1f( selectedLoc, Id == selectedId ? 1.0 : 0.0 );
+        if ( mode == 1 || mode == 3 ) {
+            gl.activeTexture( gl.TEXTURE0 );
+            gl.bindTexture( gl.TEXTURE_2D, partTexture[Id] );
+        }
     }
 
     gl.bindBuffer( gl.ARRAY_BUFFER, b.vBuffer );
@@ -187,11 +203,23 @@ function loadTextures() {
 }
 
 
-var render = function() {
+//
+//  Draw the scene (normal pass, or the picking pass with id colours).
+//
+function drawScene( picking ) {
 
+    // Keep the canvas resolution equal to its size on screen.
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.round( canvas.clientWidth * dpr ), h = Math.round( canvas.clientHeight * dpr );
+    if ( canvas.width != w || canvas.height != h ) { canvas.width = w; canvas.height = h; }
+    gl.viewport( 0, 0, canvas.width, canvas.height );
+
+    projectionMatrix = perspective( 45.0, canvas.width / canvas.height, 0.05, 100.0 );
+    gl.uniformMatrix4fv( projectionMatrixLoc, false, flatten( projectionMatrix ) );
+
+    if ( picking ) gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
+    else gl.clearColor( 0.11, 0.1, 0.13, 1.0 );
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
-
-    if ( document.getElementById( "wiggle" ).checked ) wiggle( ( Date.now() - startTime ) / 1000.0 );
 
     var eye = vec3(
         at[0] + radius * Math.cos( radians( camPhi ) ) * Math.sin( radians( camTheta ) ),
@@ -199,35 +227,77 @@ var render = function() {
         at[2] + radius * Math.cos( radians( camPhi ) ) * Math.cos( radians( camTheta ) ) );
 
     modelViewMatrix = lookAt( eye, vec3( at[0], at[1], at[2] ), vec3( up[0], up[1], up[2] ) );
+    pickingPass = picking;
     traverse( rootId );
+    pickingPass = false;
+}
 
+var render = function( now ) {
+
+    var dt = Math.min( ( now - lastTime ) / 1000.0, 0.1 );
+    lastTime = now;
+    if ( stepAnimation( dt, +document.getElementById( "frameTime" ).value,
+                        document.getElementById( "loop" ).checked ) ) {
+        syncUI();
+        if ( !playing ) document.getElementById( "playButton" ).textContent = "Play";
+    }
+
+    drawScene( false );
     requestAnimationFrame( render );
 };
 
+// Returns the Id of the part under canvas pixel (x, y), or -1.
+function pickPart( x, y ) {
+    drawScene( true );
+    var pixel = new Uint8Array( 4 );
+    var px = Math.floor( x * canvas.width / canvas.clientWidth );
+    var py = Math.floor( canvas.height - 1 - y * canvas.height / canvas.clientHeight );
+    gl.readPixels( px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel );
+    var Id = pixel[0] - 1;
+    return ( Id >= 0 && Id < numNodes ) ? Id : -1;
+}
+
 
 //
-//  Mouse camera: drag = rotate, shift+drag = pan, wheel = zoom.
+//  Mouse: click = select part; drag part = rotate its joint (Alt: z axis);
+//  drag empty space = orbit; right/middle or Shift+drag = pan; wheel = zoom.
 //
 function setupMouse() {
 
-    var dragging = false, panning = false, lastX = 0, lastY = 0;
+    var drag = null, lastX = 0, lastY = 0;
 
+    canvas.addEventListener( "contextmenu", function ( e ) { e.preventDefault(); } );
     canvas.addEventListener( "mousedown", function ( e ) {
-        dragging = true; panning = e.shiftKey; lastX = e.clientX; lastY = e.clientY;
+        if ( !numNodes ) return;
+        if ( e.button != 0 || e.shiftKey ) { drag = "pan"; }
+        else {
+            var r = canvas.getBoundingClientRect();
+            var Id = pickPart( e.clientX - r.left, e.clientY - r.top );
+            if ( Id >= 0 ) { selectPart( Id ); drag = "part"; }
+            else drag = "orbit";
+        }
+        lastX = e.clientX; lastY = e.clientY;
+        canvas.style.cursor = "grabbing";
     } );
-    window.addEventListener( "mouseup", function () { dragging = false; } );
+    window.addEventListener( "mouseup", function () { drag = null; canvas.style.cursor = "grab"; } );
     window.addEventListener( "mousemove", function ( e ) {
-        if ( !dragging ) return;
+        if ( !drag ) return;
         var dx = e.clientX - lastX, dy = e.clientY - lastY;
         lastX = e.clientX; lastY = e.clientY;
-        if ( panning ) {
-            var s = radius * 0.002;
+        if ( drag == "part" ) {
+            var t = theta[selectedId];
+            if ( e.altKey ) t[2] = wrapAngle( t[2] + dx * 0.5 );
+            else { t[1] = wrapAngle( t[1] + dx * 0.5 ); t[0] = wrapAngle( t[0] + dy * 0.5 ); }
+            initNodes( selectedId );
+            syncUI();
+        } else if ( drag == "orbit" ) {
+            camTheta -= dx * 0.4;
+            camPhi = Math.max( -89, Math.min( 89, camPhi + dy * 0.4 ) );
+        } else {
+            var s = radius * 0.0016;
             at[0] -= Math.cos( radians( camTheta ) ) * dx * s;
             at[2] += Math.sin( radians( camTheta ) ) * dx * s;
             at[1] += dy * s;
-        } else {
-            camTheta -= dx * 0.4;
-            camPhi = Math.max( -89, Math.min( 89, camPhi + dy * 0.4 ) );
         }
     } );
     canvas.addEventListener( "wheel", function ( e ) {
@@ -236,14 +306,61 @@ function setupMouse() {
     }, { passive: false } );
 }
 
+function wrapAngle( a ) { return ( ( a + 180 ) % 360 + 360 ) % 360 - 180; }
+
 
 //
-//  Rig check panel: pick a part, rotate it with the x/y/z sliders
-//  (like the sliders of figure.html: change theta, then call initNodes).
+//  UI panel
 //
-function setupRigPanel() {
+var jointSliders = [ "jointX", "jointY", "jointZ" ];
+var globalPosSliders = [ "globalPX", "globalPY", "globalPZ" ];
+var globalRotSliders = [ "globalRX", "globalRY", "globalRZ" ];
 
-    var select = document.getElementById( "partSelect" );
+function $( id ) { return document.getElementById( id ); }
+
+function setSlider( id, value ) {
+    $( id ).value = value;
+    $( id ).nextElementSibling.textContent = ( +value ).toFixed( $( id ).step < 1 ? 2 : 0 );
+}
+
+function syncUI() {
+    $( "selName" ).textContent = partName[selectedId];
+    $( "partSelect" ).value = selectedId;
+    for ( var k = 0; k < 3; ++k ) {
+        setSlider( jointSliders[k], theta[selectedId][k] );
+        setSlider( globalPosSliders[k], position[rootId][k] );
+        setSlider( globalRotSliders[k], theta[rootId][k] );
+    }
+}
+
+function selectPart( Id ) { selectedId = Id; syncUI(); }
+
+function renderFrameList() {
+    var html = "";
+    for ( var i = 0; i < frames.length; ++i )
+        html += '<li data-i="' + i + '" class="' + ( i == currentFrame ? "on" : "" ) + '">' + ( i + 1 ) + "</li>";
+    $( "frameList" ).innerHTML = html || '<span class="hint">No keyframes yet</span>';
+}
+
+function stopPlaying() { playing = false; $( "playButton" ).textContent = "Play"; }
+
+function usePreset( list, frameTime ) {
+    stopPlaying();
+    frames = list;
+    currentFrame = 0;
+    setSlider( "frameTime", frameTime );
+    setPose( frames[0] );
+    renderFrameList();
+    syncUI();
+    playing = true; animTime = 0;
+    $( "playButton" ).textContent = "Stop";
+}
+
+function setupUI() {
+
+    $( "renderMode" ).onchange = function ( e ) { renderMode = +e.target.value; };
+
+    var select = $( "partSelect" );
     for ( var Id = 0; Id < numNodes; ++Id ) {
         var depth = 0;
         for ( var p = parentId[Id]; p != null; p = parentId[p] ) depth++;
@@ -252,54 +369,76 @@ function setupRigPanel() {
         option.textContent = "  ".repeat( depth ) + partName[Id];
         select.appendChild( option );
     }
-    select.value = rootId;
-    selectedId = rootId;
+    select.onchange = function ( e ) { selectPart( +e.target.value ); };
 
-    var sliders = [ "sliderX", "sliderY", "sliderZ" ];
-    function refresh() {
-        for ( var k = 0; k < 3; ++k ) document.getElementById( sliders[k] ).value = theta[selectedId][k];
-    }
-
-    select.onchange = function ( event ) {
-        selectedId = +event.target.value;
-        refresh();
-    };
-
-    sliders.forEach( function ( id, k ) {
-        document.getElementById( id ).oninput = function ( event ) {
-            document.getElementById( "wiggle" ).checked = false;
-            theta[selectedId][k] = +event.target.value;
-            initNodes( selectedId );
+    // Like the sliders of figure.html: change theta / position, then initNodes.
+    jointSliders.forEach( function ( id, k ) {
+        $( id ).oninput = function ( e ) {
+            theta[selectedId][k] = +e.target.value; initNodes( selectedId ); syncUI();
         };
     } );
+    globalPosSliders.forEach( function ( id, k ) {
+        $( id ).oninput = function ( e ) {
+            position[rootId][k] = +e.target.value; initNodes( rootId ); syncUI();
+        };
+    } );
+    globalRotSliders.forEach( function ( id, k ) {
+        $( id ).oninput = function ( e ) {
+            theta[rootId][k] = +e.target.value; initNodes( rootId ); syncUI();
+        };
+    } );
+    $( "resetButton" ).onclick = function () { stopPlaying(); resetPose(); syncUI(); };
 
-    document.getElementById( "resetButton" ).onclick = function () {
-        document.getElementById( "wiggle" ).checked = false;
-        resetPose();
-        refresh();
+    // Keyframes
+    $( "frameList" ).onclick = function ( e ) {
+        var i = e.target.dataset.i;
+        if ( i === undefined ) return;
+        stopPlaying();
+        currentFrame = +i; setPose( frames[currentFrame] ); renderFrameList(); syncUI();
+    };
+    $( "addFrame" ).onclick = function () {
+        frames.splice( currentFrame + 1, 0, getPose() ); currentFrame++; renderFrameList();
+    };
+    $( "updateFrame" ).onclick = function () { if ( currentFrame >= 0 ) frames[currentFrame] = getPose(); };
+    $( "deleteFrame" ).onclick = function () {
+        if ( currentFrame < 0 ) return;
+        frames.splice( currentFrame, 1 );
+        currentFrame = Math.min( currentFrame, frames.length - 1 );
+        renderFrameList();
+    };
+    $( "clearFrames" ).onclick = function () { stopPlaying(); frames = []; currentFrame = -1; renderFrameList(); };
+    $( "frameTime" ).oninput = function ( e ) { setSlider( "frameTime", e.target.value ); };
+    setSlider( "frameTime", $( "frameTime" ).value );
+    $( "playButton" ).onclick = function () {
+        if ( frames.length < 2 ) { alert( "Add at least two keyframes first." ); return; }
+        playing = !playing; animTime = 0;
+        $( "playButton" ).textContent = playing ? "Stop" : "Play";
+    };
+    $( "presetWalk" ).onclick = function () { usePreset( presetWalk(), 0.08 ); };
+    $( "presetFly" ).onclick = function () { usePreset( presetFly(), 0.05 ); };
+
+    // Save / load
+    $( "saveButton" ).onclick = function () {
+        if ( !frames.length ) { alert( "No keyframes to save." ); return; }
+        saveAnimation( +$( "frameTime" ).value );
+    };
+    $( "loadFile" ).onchange = function ( e ) {
+        var file = e.target.files[0];
+        if ( !file ) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+            try {
+                stopPlaying();
+                var frameTime = loadAnimation( reader.result );
+                if ( frameTime ) setSlider( "frameTime", frameTime );
+                renderFrameList(); syncUI();
+            } catch ( err ) { alert( "Could not read the file: " + err ); }
+        };
+        reader.readAsText( file );
+        e.target.value = "";
     };
 
-    document.getElementById( "status" ).textContent =
-        numNodes + " parts loaded, root = " + partName[rootId];
-}
-
-
-//
-//  Test motion that moves every joint, to check all pivots at once.
-//
-function wiggle( t ) {
-
-    for ( var Id = 0; Id < numNodes; ++Id ) {
-        var name = partName[Id];
-        var side = name.slice( -2 ) == "_R" ? -1 : 1;
-        if ( name.indexOf( "wing" ) >= 0 )            theta[Id] = vec3( 0, 0, side * 30 * Math.sin( t * 6 ) );
-        else if ( name.indexOf( "_upper" ) >= 0 )     theta[Id] = vec3( 15 * Math.sin( t * 3 + Id ), 0, 0 );
-        else if ( name.indexOf( "_lower" ) >= 0 )     theta[Id] = vec3( 0, 0, side * 15 * Math.sin( t * 3 + Id ) );
-        else if ( name.indexOf( "leg_" ) == 0 )       theta[Id] = vec3( 15 * Math.sin( t * 3 + Id ), 0, 0 );
-        else if ( name.indexOf( "antenna" ) == 0 )    theta[Id] = vec3( 10 * Math.sin( t * 2 ), 0, 0 );
-        else if ( name == "head" )                    theta[Id] = vec3( 0, 10 * Math.sin( t ), 0 );
-        else if ( name == "abdomen" )                 theta[Id] = vec3( 8 * Math.sin( t * 1.5 ), 0, 0 );
-        else continue;
-        initNodes( Id );
-    }
+    $( "status" ).textContent = numNodes + " parts loaded, root = " + partName[rootId];
+    renderFrameList();
+    syncUI();
 }

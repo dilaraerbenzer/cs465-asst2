@@ -2,18 +2,23 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Goth Moth</title>
 
 <!--
   Shaders: Phong (per-fragment) shading from Angel & Shreiner Chapter 6,
-  shadedSphere4.html (https://github.com/esangel/WebGL/blob/master/Chap6/shadedSphere4.html).
+  shadedSphere4.html (https://github.com/esangel/WebGL/blob/master/Chap6/shadedSphere4.html),
+  and the "texture" sampler from Chapter 7, textureCube1.html.
   Our modifications:
-    - added vTexCoord / fTexCoord and the "texture" sampler from Chapter 7
-      textureCube1.html; the lit colour is multiplied by the texture colour
-      (useTexture = 0 gives the plain per-part colour)
+    - renderMode selects one of the four rendering options of the assignment:
+        0 = uniform colour, 1 = unlit texture, 2 = smooth shading,
+        3 = smooth shading with texture; 4 = picking pass (flat id colour)
+    - the light products use a white material; the part's colour or texture
+      is multiplied in afterwards
     - directional vs. point light is chosen with lightPosition.w (the original
       tests lightPosition.z)
     - back faces flip the normal so the thin wings are lit on both sides
+    - the selected part is tinted (highlight idea from furkan.html)
 -->
 <script id="vertex-shader" type="x-shader/x-vertex">
 
@@ -49,36 +54,45 @@ uniform vec4 diffuseProduct;
 uniform vec4 specularProduct;
 uniform float shininess;
 uniform sampler2D texture;
-uniform float useTexture;
+uniform int renderMode;
+uniform vec4 materialColor;
+uniform vec4 pickColor;
+uniform float selected;
 varying vec3 N, L, E;
 varying vec2 fTexCoord;
 
 void main()
 {
+    if (renderMode == 4) { gl_FragColor = pickColor; return; }
+
+    vec4 base = materialColor;
+    if (renderMode == 1 || renderMode == 3) base = texture2D( texture, fTexCoord );
+
     vec4 fColor;
+    if (renderMode <= 1) {
+        fColor = base;                                   // unlit
+    } else {
+        vec3 NN = normalize(N);
+        vec3 LL = normalize(L);
+        vec3 EE = normalize(E);
+        if (!gl_FrontFacing) NN = -NN;
 
-    vec3 NN = normalize(N);
-    vec3 LL = normalize(L);
-    vec3 EE = normalize(E);
-    if (!gl_FrontFacing) NN = -NN;
+        vec3 H = normalize( LL + EE );
+        vec4 ambient = ambientProduct;
 
-    vec3 H = normalize( LL + EE );
-    vec4 ambient = ambientProduct;
+        float Kd = max( dot(LL, NN), 0.0 );
+        vec4  diffuse = Kd*diffuseProduct;
 
-    float Kd = max( dot(LL, NN), 0.0 );
-    vec4  diffuse = Kd*diffuseProduct;
+        float Ks = pow( max(dot(NN, H), 0.0), shininess );
+        vec4  specular = Ks * specularProduct;
 
-    float Ks = pow( max(dot(NN, H), 0.0), shininess );
-    vec4  specular = Ks * specularProduct;
+        if( dot(LL, NN) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
 
-    if( dot(LL, NN) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+        fColor = (ambient + diffuse) * base + specular;
+    }
 
-    vec4 texColor = vec4(1.0, 1.0, 1.0, 1.0);
-    if (useTexture > 0.5) texColor = texture2D( texture, fTexCoord );
-
-    fColor = (ambient + diffuse) * texColor + specular;
+    fColor.rgb = mix( fColor.rgb, vec3(1.0, 0.45, 0.2), 0.35 * selected );
     fColor.a = 1.0;
-
     gl_FragColor = fColor;
 }
 </script>
@@ -88,34 +102,68 @@ void main()
 <script type="text/javascript" src="Common/MV.js"></script>
 <script type="text/javascript" src="js/objLoader.js"></script>
 <script type="text/javascript" src="js/moth.js"></script>
+<script type="text/javascript" src="js/animation.js"></script>
 <script type="text/javascript" src="js/main.js"></script>
 
 <style>
-  body { margin: 0; background: #1c1a21; color: #ddd; font: 13px sans-serif; display: flex; }
-  #gl-canvas { cursor: grab; }
-  #panel { width: 240px; padding: 12px; }
-  #panel select { width: 100%; font-family: monospace; }
-  #panel div { margin: 6px 0; }
-  #status { color: #9a93a8; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; background: #1c1a21; color: #ddd; font: 13px/1.4 sans-serif; }
+  #gl-canvas { flex: 1; min-width: 0; height: 100%; display: block; cursor: grab; }
+  #panel { width: 290px; padding: 10px 12px; overflow-y: auto; background: #24212a; }
+  #panel h3 { font-size: 13px; margin: 12px 0 6px; padding-top: 8px; border-top: 1px solid #3a3542; }
+  #panel h3:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+  #panel label { display: grid; grid-template-columns: 70px 1fr 38px; align-items: center; gap: 4px; margin: 2px 0; }
+  #panel output { text-align: right; color: #9a93a8; }
+  #panel select { width: 100%; }
+  #panel button { margin: 2px 2px 2px 0; }
+  #frameList { display: flex; flex-wrap: wrap; gap: 3px; margin: 4px 0; padding: 0; list-style: none; }
+  #frameList li { padding: 1px 7px; border: 1px solid #4a4452; border-radius: 3px; cursor: pointer; }
+  #frameList li.on { background: #8a5cc4; border-color: #8a5cc4; color: #fff; }
+  .hint { color: #9a93a8; font-size: 12px; }
+  @media (max-width: 700px) { body { flex-direction: column-reverse; } #panel { width: auto; height: 45%; } }
 </style>
 </head>
 
 <body>
-<canvas id="gl-canvas" width="900" height="700">
+<canvas id="gl-canvas">
 Oops ... your browser doesn't support the HTML5 canvas element
 </canvas>
 
 <div id="panel">
-  <b>Rig check</b>
-  <select id="partSelect" size="12"></select>
-  <div>x angle -180 <input id="sliderX" type="range" min="-180" max="180" step="1" value="0"> 180</div>
-  <div>y angle -180 <input id="sliderY" type="range" min="-180" max="180" step="1" value="0"> 180</div>
-  <div>z angle -180 <input id="sliderZ" type="range" min="-180" max="180" step="1" value="0"> 180</div>
-  <div><input id="wiggle" type="checkbox"> wiggle all joints</div>
-  <div><input id="textures" type="checkbox" checked> textures</div>
+  <h3>Rendering</h3>
+  <select id="renderMode">
+    <option value="0">Colour (uniform per part)</option>
+    <option value="1">Texture (unlit)</option>
+    <option value="2">Smooth shading</option>
+    <option value="3" selected>Smooth shading + texture</option>
+  </select>
+
+  <h3>Selected part: <span id="selName">thorax</span></h3>
+  <select id="partSelect" size="7"></select>
+  <label>Rotate X <input id="jointX" type="range" min="-180" max="180" step="1"><output></output></label>
+  <label>Rotate Y <input id="jointY" type="range" min="-180" max="180" step="1"><output></output></label>
+  <label>Rotate Z <input id="jointZ" type="range" min="-180" max="180" step="1"><output></output></label>
+
+  <h3>Global position &amp; orientation</h3>
+  <label>Pos X <input id="globalPX" type="range" min="-3" max="3" step="0.05"><output></output></label>
+  <label>Pos Y <input id="globalPY" type="range" min="-3" max="3" step="0.05"><output></output></label>
+  <label>Pos Z <input id="globalPZ" type="range" min="-3" max="3" step="0.05"><output></output></label>
+  <label>Pitch X <input id="globalRX" type="range" min="-180" max="180" step="1"><output></output></label>
+  <label>Yaw Y <input id="globalRY" type="range" min="-180" max="180" step="1"><output></output></label>
+  <label>Roll Z <input id="globalRZ" type="range" min="-180" max="180" step="1"><output></output></label>
   <button id="resetButton">Reset pose</button>
-  <p id="status">Loading…</p>
-  <p id="status2" style="color:#9a93a8">Drag: rotate camera<br>Shift+drag: pan<br>Wheel: zoom</p>
+
+  <h3>Animation</h3>
+  <button id="addFrame">Add keyframe</button><button id="updateFrame">Update</button><button id="deleteFrame">Delete</button><button id="clearFrames">Clear</button>
+  <ol id="frameList"></ol>
+  <label>Frame time <input id="frameTime" type="range" min="0.03" max="1.5" step="0.01" value="0.25"><output></output></label>
+  <button id="playButton">Play</button> <input id="loop" type="checkbox" checked> loop
+  <div><button id="presetWalk">Preset: walk</button><button id="presetFly">Preset: fly</button></div>
+  <div><button id="saveButton">Save (.json)</button> <input type="file" id="loadFile" accept=".json"></div>
+
+  <p class="hint" id="status">Loading…</p>
+  <p class="hint">Click a part to select it. Drag a part: rotate X/Y (Alt+drag: Z).
+    Drag empty space: orbit camera. Right-drag or Shift+drag: pan. Wheel: zoom.</p>
 </div>
 </body>
 </html>

@@ -97,6 +97,41 @@ void main()
 }
 </script>
 
+<!--
+  Skybox shaders. The samplerCube / textureCube lookup is from Angel &
+  Shreiner Chapter 7, reflectionMap.html; here the cube-map is looked up with
+  the view direction (a skybox) instead of the reflected direction.
+  The cube is drawn around the camera with only the camera's rotation, and
+  gl_Position.z = w puts it on the far plane, behind everything.
+-->
+<script id="sky-vertex-shader" type="x-shader/x-vertex">
+
+attribute vec4 vPosition;
+varying vec3 fDirection;
+uniform mat4 skyViewMatrix;
+uniform mat4 projectionMatrix;
+
+void main()
+{
+    fDirection = vPosition.xyz;
+    vec4 pos = projectionMatrix * skyViewMatrix * vec4(vPosition.xyz, 1.0);
+    gl_Position = pos.xyww;
+}
+</script>
+
+<script id="sky-fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+varying vec3 fDirection;
+uniform samplerCube texMap;
+
+void main()
+{
+    gl_FragColor = textureCube(texMap, normalize(fDirection));
+}
+</script>
+
 <script type="text/javascript" src="Common/webgl-utils.js"></script>
 <script type="text/javascript" src="Common/initShaders.js"></script>
 <script type="text/javascript" src="Common/MV.js"></script>
@@ -137,6 +172,7 @@ Oops ... your browser doesn't support the HTML5 canvas element
     <option value="2">Smooth shading</option>
     <option value="3" selected>Smooth shading + texture</option>
   </select>
+  <div><input id="skyboxOn" type="checkbox" checked> night-sky background (skybox)</div>
 
   <h3>Selected part: <span id="selName">thorax</span></h3>
   <select id="partSelect" size="7"></select>

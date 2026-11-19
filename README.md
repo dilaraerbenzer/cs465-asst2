@@ -24,6 +24,8 @@ Then open http://localhost:8000.
 | `js/animation.js` | keyframes, interpolation, walk/fly presets, save/load |
 | `models/moth_tripo.obj` | source model (Tripo, segmented into 13 parts) |
 | `models/textures/` | one base-colour texture per Tripo part |
+| `models/skybox/` | six cube-map faces of the night-sky background |
+| `tools/make_skybox.py` | generates the skybox images (replace them to use your own) |
 | `models/moth.obj`, `models/moth.rig.json` | the model the app loads, made by `tools/rig_from_tripo.py` |
 | `tools/rig_from_tripo.py` | renames/turns the Tripo parts and finds the joints |
 | `furkan.html` | Furkan's original standalone prototype (its features are now ported into `js/`) |
@@ -36,7 +38,8 @@ Code reused from the book is marked at the top of each file, with what we change
 ## Features
 
 * **Part 1, model:** segmented Tripo moth, 13 parts, `figure.js`-style tree.
-* **Part 2, rendering:** colour / unlit texture / smooth shading / shaded texture.
+* **Part 2, rendering:** colour / unlit texture / smooth shading / shaded texture,
+  plus a cube-map skybox background (gothic night sky).
 * **Part 3, animation:** add/update/delete keyframes, linear interpolation of
   every joint, play/loop, frame time, presets (walk, fly), save/load JSON.
 * **Part 4, posture and camera:** click a part to select it, drag it to rotate

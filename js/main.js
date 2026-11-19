@@ -44,12 +44,18 @@ var materialShininess = 32.0;
 // Camera: spherical coordinates around "at" (shadedSphere4.js uses radius, theta, phi)
 var radius = 4.0;
 var camTheta = 35.0;     // degrees around the y axis
-var camPhi = 20.0;       // degrees above the ground
+var camPhi = 10.0;       // degrees above the ground
 var at = [ 0.0, 0.0, -0.2 ];
 var up = [ 0.0, 1.0, 0.0 ];
 
+// Skybox (second shader program)
+var skyProgram, skyBuffer, skyPositionLoc, skyViewMatrixLoc, skyProjectionLoc;
+var cubeMap = null;
+var skyFaces = [ "px", "nx", "py", "ny", "pz", "nz" ];
+
 var renderMode = 3;
 var selectedId = 0;
+var showSelection = false;   // no highlight until the user selects a part
 var pickingPass = false;
 var lastTime = 0;
 
@@ -90,6 +96,7 @@ window.onload = function init() {
     gl.uniform1f( gl.getUniformLocation( program, "shininess" ), materialShininess );
     gl.uniform1i( gl.getUniformLocation( program, "texture" ), 0 );
 
+    setupSkybox();
     setupMouse();
 
     //
@@ -147,7 +154,7 @@ function drawPart( Id ) {
         if ( texturedMode && !partTexture[Id] ) mode = ( mode == 1 ) ? 0 : 2;
         gl.uniform1i( renderModeLoc, mode );
         gl.uniform4fv( materialColorLoc, flatten( partColor[Id] ) );
-        gl.uniform1f( selectedLoc, Id == selectedId ? 1.0 : 0.0 );
+        gl.uniform1f( selectedLoc, ( showSelection && Id == selectedId ) ? 1.0 : 0.0 );
         if ( mode == 1 || mode == 3 ) {
             gl.activeTexture( gl.TEXTURE0 );
             gl.bindTexture( gl.TEXTURE_2D, partTexture[Id] );
@@ -204,6 +211,88 @@ function loadTextures() {
 
 
 //
+//  Skybox: a cube of side 2 around the camera, textured with a cube-map.
+//  configureCubeMap() is from Angel & Shreiner Chapter 7, reflectionMap.js;
+//  modified to upload six images (models/skybox/*.jpg) instead of six 1x1
+//  colours, and to use LINEAR filtering. The images are not flipped: cube-map
+//  faces use the image's top row as t = 0.
+//
+function configureCubeMap( images ) {
+
+    cubeMap = gl.createTexture();
+
+    gl.bindTexture( gl.TEXTURE_CUBE_MAP, cubeMap );
+    gl.pixelStorei( gl.UNPACK_FLIP_Y_WEBGL, false );
+    var targets = [ gl.TEXTURE_CUBE_MAP_POSITIVE_X, gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+                    gl.TEXTURE_CUBE_MAP_POSITIVE_Y, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+                    gl.TEXTURE_CUBE_MAP_POSITIVE_Z, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z ];
+    for ( var i = 0; i < 6; ++i )
+        gl.texImage2D( targets[i], 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, images[i] );
+
+    gl.texParameteri( gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+    gl.texParameteri( gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+    gl.texParameteri( gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+    gl.texParameteri( gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+}
+
+function setupSkybox() {
+
+    skyProgram = initShaders( gl, "sky-vertex-shader", "sky-fragment-shader" );
+    skyPositionLoc   = gl.getAttribLocation( skyProgram, "vPosition" );
+    skyViewMatrixLoc = gl.getUniformLocation( skyProgram, "skyViewMatrix" );
+    skyProjectionLoc = gl.getUniformLocation( skyProgram, "projectionMatrix" );
+
+    // cube from the 8 corners, two triangles per face (like quad() in the book)
+    var v = [ vec4( -1, -1,  1, 1 ), vec4( -1,  1,  1, 1 ), vec4(  1,  1,  1, 1 ), vec4(  1, -1,  1, 1 ),
+              vec4( -1, -1, -1, 1 ), vec4( -1,  1, -1, 1 ), vec4(  1,  1, -1, 1 ), vec4(  1, -1, -1, 1 ) ];
+    var pointsArray = [];
+    function quad( a, b, c, d ) { [ a, b, c, a, c, d ].forEach( function ( i ) { pointsArray.push( v[i] ); } ); }
+    quad( 1, 0, 3, 2 ); quad( 2, 3, 7, 6 ); quad( 3, 0, 4, 7 );
+    quad( 6, 5, 1, 2 ); quad( 4, 5, 6, 7 ); quad( 5, 4, 0, 1 );
+
+    skyBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, skyBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten( pointsArray ), gl.STATIC_DRAW );
+
+    // load the six faces, then build the cube-map
+    var images = [], loaded = 0;
+    skyFaces.forEach( function ( face, i ) {
+        images[i] = new Image();
+        images[i].onload = function () { if ( ++loaded == 6 ) configureCubeMap( images ); };
+        images[i].src = "models/skybox/" + face + ".jpg";
+    } );
+}
+
+function drawSky( eye ) {
+
+    gl.useProgram( skyProgram );
+    gl.uniformMatrix4fv( skyProjectionLoc, false, flatten( projectionMatrix ) );
+    // camera rotation only: look in the same direction from the origin
+    var dir = vec3( at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] );
+    gl.uniformMatrix4fv( skyViewMatrixLoc, false, flatten( lookAt( vec3( 0, 0, 0 ), dir, vec3( up[0], up[1], up[2] ) ) ) );
+
+    // only vPosition is used here; turn off the moth's other attribute arrays
+    if ( vNormal >= 0 ) gl.disableVertexAttribArray( vNormal );
+    if ( vTexCoord >= 0 ) gl.disableVertexAttribArray( vTexCoord );
+    gl.bindBuffer( gl.ARRAY_BUFFER, skyBuffer );
+    gl.vertexAttribPointer( skyPositionLoc, 4, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( skyPositionLoc );
+
+    gl.activeTexture( gl.TEXTURE0 );
+    gl.bindTexture( gl.TEXTURE_CUBE_MAP, cubeMap );
+    // Drawn first with no depth test and no depth writes: it is always behind
+    // (its depth would be exactly 1.0, which the default LESS test rejects).
+    gl.disable( gl.DEPTH_TEST );
+    gl.depthMask( false );
+    gl.drawArrays( gl.TRIANGLES, 0, 36 );
+    gl.depthMask( true );
+    gl.enable( gl.DEPTH_TEST );
+
+    gl.useProgram( program );
+}
+
+
+//
 //  Draw the scene (normal pass, or the picking pass with id colours).
 //
 function drawScene( picking ) {
@@ -215,6 +304,7 @@ function drawScene( picking ) {
     gl.viewport( 0, 0, canvas.width, canvas.height );
 
     projectionMatrix = perspective( 45.0, canvas.width / canvas.height, 0.05, 100.0 );
+    gl.useProgram( program );
     gl.uniformMatrix4fv( projectionMatrixLoc, false, flatten( projectionMatrix ) );
 
     if ( picking ) gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
@@ -225,6 +315,8 @@ function drawScene( picking ) {
         at[0] + radius * Math.cos( radians( camPhi ) ) * Math.sin( radians( camTheta ) ),
         at[1] + radius * Math.sin( radians( camPhi ) ),
         at[2] + radius * Math.cos( radians( camPhi ) ) * Math.cos( radians( camTheta ) ) );
+
+    if ( !picking && cubeMap && document.getElementById( "skyboxOn" ).checked ) drawSky( eye );
 
     modelViewMatrix = lookAt( eye, vec3( at[0], at[1], at[2] ), vec3( up[0], up[1], up[2] ) );
     pickingPass = picking;
@@ -333,7 +425,7 @@ function syncUI() {
     }
 }
 
-function selectPart( Id ) { selectedId = Id; syncUI(); }
+function selectPart( Id ) { selectedId = Id; showSelection = true; syncUI(); }
 
 function renderFrameList() {
     var html = "";

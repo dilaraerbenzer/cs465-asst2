@@ -13,7 +13,8 @@
         0.08,
         0.18
       ],
-      "source": "tripo_part_4"
+      "source": "tripo_part_4",
+      "texture": "textures/tripo_part_4_basecolor.jpg"
     },
     {
       "name": "head",
@@ -28,7 +29,8 @@
         0.06,
         0.08
       ],
-      "source": "tripo_part_5"
+      "source": "tripo_part_5",
+      "texture": "textures/tripo_part_5_basecolor.jpg"
     },
     {
       "name": "antenna_L",
@@ -43,7 +45,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_6"
+      "source": "tripo_part_6",
+      "texture": "textures/tripo_part_6_basecolor.jpg"
     },
     {
       "name": "antenna_R",
@@ -58,7 +61,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_12"
+      "source": "tripo_part_12",
+      "texture": "textures/tripo_part_12_basecolor.jpg"
     },
     {
       "name": "abdomen",
@@ -73,7 +77,8 @@
         0.12,
         0.3
       ],
-      "source": "tripo_part_1"
+      "source": "tripo_part_1",
+      "texture": "textures/tripo_part_1_basecolor.jpg"
     },
     {
       "name": "wing_L",
@@ -88,7 +93,8 @@
         0.06,
         0.08
       ],
-      "source": "tripo_part_3"
+      "source": "tripo_part_3",
+      "texture": "textures/tripo_part_3_basecolor.jpg"
     },
     {
       "name": "wing_R",
@@ -103,7 +109,8 @@
         0.06,
         0.08
       ],
-      "source": "tripo_part_2"
+      "source": "tripo_part_2",
+      "texture": "textures/tripo_part_2_basecolor.jpg"
     },
     {
       "name": "leg_front_L",
@@ -118,7 +125,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_9"
+      "source": "tripo_part_9",
+      "texture": "textures/tripo_part_9_basecolor.jpg"
     },
     {
       "name": "leg_front_R",
@@ -133,7 +141,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_7"
+      "source": "tripo_part_7",
+      "texture": "textures/tripo_part_7_basecolor.jpg"
     },
     {
       "name": "leg_mid_L",
@@ -148,7 +157,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_10"
+      "source": "tripo_part_10",
+      "texture": "textures/tripo_part_10_basecolor.jpg"
     },
     {
       "name": "leg_mid_R",
@@ -163,7 +173,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_11"
+      "source": "tripo_part_11",
+      "texture": "textures/tripo_part_11_basecolor.jpg"
     },
     {
       "name": "leg_hind_L",
@@ -178,7 +189,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_0"
+      "source": "tripo_part_0",
+      "texture": "textures/tripo_part_0_basecolor.jpg"
     },
     {
       "name": "leg_hind_R",
@@ -193,7 +205,8 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_8"
+      "source": "tripo_part_8",
+      "texture": "textures/tripo_part_8_basecolor.jpg"
     }
   ]
 }

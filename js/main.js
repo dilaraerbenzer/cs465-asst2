@@ -21,7 +21,7 @@ var program;
 
 var projectionMatrix;
 var modelViewMatrixLoc, projectionMatrixLoc, normalMatrixLoc;
-var ambientProductLoc, diffuseProductLoc, specularProductLoc;
+var ambientProductLoc, diffuseProductLoc, specularProductLoc, useTextureLoc;
 var vPosition, vNormal, vTexCoord;
 
 // Light and material, as in shadedSphere4.js
@@ -72,6 +72,8 @@ window.onload = function init() {
     ambientProductLoc   = gl.getUniformLocation( program, "ambientProduct" );
     diffuseProductLoc   = gl.getUniformLocation( program, "diffuseProduct" );
     specularProductLoc  = gl.getUniformLocation( program, "specularProduct" );
+    useTextureLoc       = gl.getUniformLocation( program, "useTexture" );
+    gl.uniform1i( gl.getUniformLocation( program, "texture" ), 0 );
 
     gl.uniform4fv( specularProductLoc, flatten( mult( lightSpecular, materialSpecular ) ) );
     gl.uniform4fv( gl.getUniformLocation( program, "lightPosition" ), flatten( lightPosition ) );
@@ -90,6 +92,7 @@ window.onload = function init() {
         fetch( "models/moth.rig.json" ).then( function ( r ) { return r.json(); } )
     ] ).then( function ( files ) {
         buildMoth( gl, files[1], loadOBJ( files[0] ), drawPart );
+        loadTextures();
         setupRigPanel();
         startTime = Date.now();
         render();
@@ -124,8 +127,16 @@ function drawPart( Id ) {
                         m[2][0], m[2][1], m[2][2] );
     gl.uniformMatrix3fv( normalMatrixLoc, false, flatten( nMatrix ) );
 
-    gl.uniform4fv( ambientProductLoc, flatten( mult( lightAmbient, partColor[Id] ) ) );
-    gl.uniform4fv( diffuseProductLoc, flatten( mult( lightDiffuse, partColor[Id] ) ) );
+    // With a texture the material is white and the texture gives the colour.
+    var textured = partTexture[Id] && document.getElementById( "textures" ).checked;
+    var materialColor = textured ? vec4( 1.0, 1.0, 1.0, 1.0 ) : partColor[Id];
+    gl.uniform4fv( ambientProductLoc, flatten( mult( lightAmbient, materialColor ) ) );
+    gl.uniform4fv( diffuseProductLoc, flatten( mult( lightDiffuse, materialColor ) ) );
+    gl.uniform1f( useTextureLoc, textured ? 1.0 : 0.0 );
+    if ( textured ) {
+        gl.activeTexture( gl.TEXTURE0 );
+        gl.bindTexture( gl.TEXTURE_2D, partTexture[Id] );
+    }
 
     gl.bindBuffer( gl.ARRAY_BUFFER, b.vBuffer );
     gl.vertexAttribPointer( vPosition, 4, gl.FLOAT, false, 0, 0 );
@@ -142,6 +153,37 @@ function drawPart( Id ) {
     }
 
     gl.drawArrays( gl.TRIANGLES, 0, b.numVertices );
+}
+
+
+//
+//  Textures: configureTexture() is from Angel & Shreiner Chapter 7,
+//  textureCube1.js. Modified to return the texture (one per part) instead of
+//  using a single global, and to use LINEAR filtering for smoother results.
+//  The images must be power-of-two sized (WebGL 1 mipmaps).
+//
+function configureTexture( image ) {
+    var texture = gl.createTexture();
+    gl.bindTexture( gl.TEXTURE_2D, texture );
+    gl.pixelStorei( gl.UNPACK_FLIP_Y_WEBGL, true );
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGB,
+         gl.RGB, gl.UNSIGNED_BYTE, image );
+    gl.generateMipmap( gl.TEXTURE_2D );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER,
+                      gl.LINEAR_MIPMAP_LINEAR );
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+    return texture;
+}
+
+function loadTextures() {
+    for ( var Id = 0; Id < numNodes; ++Id ) {
+        if ( !partTextureFile[Id] ) continue;
+        var image = new Image();
+        image.onload = ( function ( Id, image ) {
+            return function () { partTexture[Id] = configureTexture( image ); };
+        } )( Id, image );
+        image.src = "models/" + partTextureFile[Id];
+    }
 }
 
 

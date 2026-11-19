@@ -8,7 +8,9 @@
   Shaders: Phong (per-fragment) shading from Angel & Shreiner Chapter 6,
   shadedSphere4.html (https://github.com/esangel/WebGL/blob/master/Chap6/shadedSphere4.html).
   Our modifications:
-    - added vTexCoord / fTexCoord (unused for now, for textured rendering later)
+    - added vTexCoord / fTexCoord and the "texture" sampler from Chapter 7
+      textureCube1.html; the lit colour is multiplied by the texture colour
+      (useTexture = 0 gives the plain per-part colour)
     - directional vs. point light is chosen with lightPosition.w (the original
       tests lightPosition.z)
     - back faces flip the normal so the thin wings are lit on both sides
@@ -46,6 +48,8 @@ uniform vec4 ambientProduct;
 uniform vec4 diffuseProduct;
 uniform vec4 specularProduct;
 uniform float shininess;
+uniform sampler2D texture;
+uniform float useTexture;
 varying vec3 N, L, E;
 varying vec2 fTexCoord;
 
@@ -69,7 +73,10 @@ void main()
 
     if( dot(LL, NN) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
 
-    fColor = ambient + diffuse + specular;
+    vec4 texColor = vec4(1.0, 1.0, 1.0, 1.0);
+    if (useTexture > 0.5) texColor = texture2D( texture, fTexCoord );
+
+    fColor = (ambient + diffuse) * texColor + specular;
     fColor.a = 1.0;
 
     gl_FragColor = fColor;
@@ -105,6 +112,7 @@ Oops ... your browser doesn't support the HTML5 canvas element
   <div>y angle -180 <input id="sliderY" type="range" min="-180" max="180" step="1" value="0"> 180</div>
   <div>z angle -180 <input id="sliderZ" type="range" min="-180" max="180" step="1" value="0"> 180</div>
   <div><input id="wiggle" type="checkbox"> wiggle all joints</div>
+  <div><input id="textures" type="checkbox" checked> textures</div>
   <button id="resetButton">Reset pose</button>
   <p id="status">Loading…</p>
   <p id="status2" style="color:#9a93a8">Drag: rotate camera<br>Shift+drag: pan<br>Wheel: zoom</p>

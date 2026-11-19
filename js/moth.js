@@ -37,6 +37,8 @@ var parentId = [];        // Id -> parent Id (null for the root)
 var pivot = [];           // Id -> joint position in model space (vec3)
 var offset = [];          // Id -> pivot relative to the parent's pivot
 var partColor = [];       // Id -> vec4 material colour
+var partTextureFile = []; // Id -> image file (relative to models/), or null
+var partTexture = [];     // Id -> WebGL texture once the image has loaded
 
 var theta = [];           // Id -> vec3, joint angles in degrees   (sliders / keyframes)
 var position = [];        // Id -> vec3, extra translation          (global position of root)
@@ -98,6 +100,8 @@ function buildMoth( gl, rig, objParts, drawPart ) {
         pivot[Id] = vec3( p.pivot[0], p.pivot[1], p.pivot[2] );
         var c = p.color || [ 0.5, 0.5, 0.5 ];
         partColor[Id] = vec4( c[0], c[1], c[2], 1.0 );
+        partTextureFile[Id] = p.texture || null;
+        partTexture[Id] = null;
         theta[Id] = vec3( 0, 0, 0 );
         position[Id] = vec3( 0, 0, 0 );
     }

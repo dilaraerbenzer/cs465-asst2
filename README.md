@@ -22,6 +22,7 @@ Then open http://localhost:8000.
 | `js/moth.js` | hierarchy: `figure[]`, `createNode`, `initNodes`, `traverse` (from `figure.js`), get/set pose |
 | `js/main.js` | `init()` / `render()`, lighting, mouse camera, rig-check panel |
 | `models/moth_tripo.obj` | source model (Tripo, segmented into 13 parts) |
+| `models/textures/` | one base-colour texture per Tripo part |
 | `models/moth.obj`, `models/moth.rig.json` | the model the app loads, made by `tools/rig_from_tripo.py` |
 | `tools/rig_from_tripo.py` | renames/turns the Tripo parts and finds the joints |
 | `furkan.html` | Furkan's standalone parts 2–4 prototype, to be merged into this structure |

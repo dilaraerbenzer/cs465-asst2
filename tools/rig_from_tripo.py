@@ -3,7 +3,9 @@
 Turns the segmented Tripo model (models/moth_tripo.obj) into the files the
 app loads:
     models/moth.obj        parts renamed, moth turned to face +Z, scaled, centred
-    models/moth.rig.json   parent, pivot (joint) and colour of every part
+    models/moth.rig.json   parent, pivot (joint), colour and texture of every part
+
+Textures: models/textures/<tripo part>_basecolor.jpg (from the Tripo download).
 
 The joints are found automatically: a part's pivot is the centre of the
 vertices that touch its parent part (the "contact patch").
@@ -117,9 +119,14 @@ def main():
             pivot, gap = contact_pivot(pts, V[ids[src_of[parent]]], rng)
             if gap > 0.05 * SCALE:
                 print(f"warning: {name} does not touch {parent} (gap {gap:.3f}); check its pivot")
-        rig["parts"].append({"name": name, "parent": parent,
-                             "pivot": [round(float(x), 5) for x in pivot], "color": color,
-                             "source": src})
+        entry = {"name": name, "parent": parent,
+                 "pivot": [round(float(x), 5) for x in pivot], "color": color, "source": src}
+        texture = f"textures/{src}_basecolor.jpg"          # relative to models/
+        if os.path.exists(os.path.join(ROOT, "models", texture)):
+            entry["texture"] = texture
+        else:
+            print(f"note: no texture {texture}")
+        rig["parts"].append(entry)
         print(f"{name:12s} <- {src:14s} pivot {np.round(pivot, 3)}")
 
     with open(OUT_RIG, "w") as f:

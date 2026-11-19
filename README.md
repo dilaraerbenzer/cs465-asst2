@@ -16,19 +16,21 @@ Then open http://localhost:8000.
 
 | Path | What |
 |---|---|
-| `index.html` | page and UI |
-| `js/math.js` | 4×4 matrix functions and the matrix stack (from scratch) |
-| `js/obj-loader.js` | Wavefront OBJ parser (from scratch) |
-| `js/model.js` | hierarchical model: rig tree, matrix-stack traversal, get/set pose |
-| `js/main.js` | WebGL setup, shading, camera, rig-check panel |
+| `index.html` | page, shaders (Phong, from the book's `shadedSphere4`), UI |
+| `Common/` | Angel & Shreiner's `MV.js`, `initShaders.js`, `webgl-utils.js` (unmodified) |
+| `js/objLoader.js` | Wavefront OBJ parser (our code, outputs book-style `pointsArray`/`normalsArray`) |
+| `js/moth.js` | hierarchy: `figure[]`, `createNode`, `initNodes`, `traverse` (from `figure.js`), get/set pose |
+| `js/main.js` | `init()` / `render()`, lighting, mouse camera, rig-check panel |
 | `models/moth.obj`, `models/moth.rig.json` | the model (currently a placeholder) |
 | `tools/blender_export_rig.py` | Blender script that exports the real model + rig |
 | `tools/make_placeholder_moth.py` | generates the placeholder model |
 | `docs/MODELING.md` | how to build and export the moth in Blender |
 
+Code reused from the book is marked at the top of each file, with what we changed.
+
 ## Work split
 
 * Part 1 (model): Blender moth → `models/`, see `docs/MODELING.md`.
 * Parts 2–4 (rendering, keyframe animation + save/load, picking/sliders/camera):
-  build on `js/main.js`. Use `moth.getPose()` / `moth.setPose(pose)` for
-  keyframes and `part.index` for colour picking.
+  build on `js/main.js`. Use `getPose()` / `setPose(pose)` for keyframes;
+  a part's `Id` can be used for colour picking.

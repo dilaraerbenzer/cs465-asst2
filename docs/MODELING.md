@@ -76,14 +76,19 @@ nothing else needs to change, as long as the rules below are followed.
 
 ## For the demo: how the hierarchy works
 
+It is the scheme of `figure.js` (Angel & Shreiner, Chapter 9), in `js/moth.js`:
+
+* Every part is a node `createNode(transform, render, sibling, child)` in
+  `figure[]`. The tree is stored left-child / right-sibling, built from the
+  parent names in `moth.rig.json`.
+* `initNodes(Id)` rebuilds a node's transform from its joint angles
+  `theta[Id]` (x, y, z in degrees):
+  `translate(pivot - parentPivot + position) * rotateZ * rotateY * rotateX`.
+  Move to the joint, then rotate, like `figure.js`.
+* `traverse(Id)` is the book's function: push `modelViewMatrix`, multiply by
+  the node's transform, render, traverse the child, pop, traverse the sibling.
 * The OBJ is in world space. At load time each part's vertices are shifted by
-  `-pivot`, so the part's local origin is its joint (`js/model.js`, `upload`).
-* Each part stores `offset = pivot - parent.pivot` plus joint parameters
-  `rotation` and `translation`.
-  Local matrix: `L = T(offset + translation) · Rz · Ry · Rx`.
-* Drawing is a recursive tree traversal with a matrix stack
-  (`MothModel.traverse`): push the current matrix, multiply by `L`, draw the
-  part, recurse into the children, pop. That is the same scheme as
-  `figure.js` from the course samples (chapter 09).
-* `model.getPose()` / `model.setPose()` return and set every joint's
-  parameters. That's the data a keyframe stores, for the animation part.
+  `-pivot`, so the joint is at the part's local origin. That is why the render
+  function needs no extra `instanceMatrix` scaling (figure.js scales a cube).
+* `getPose()` / `setPose()` read and write every `theta` / `position`. That is
+  the data a keyframe stores, for the animation part.

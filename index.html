@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<<<<<<< HEAD
 <html>
 <head>
 <meta charset="utf-8">
@@ -111,3 +112,262 @@ Oops ... your browser doesn't support the HTML5 canvas element
 </div>
 </body>
 </html>
+=======
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Böcek Animatörü - CS465 Ödev 2</title>
+<style>
+:root{--bg:#eef0ea;--pn:#fbfbf8;--fg:#1f2a24;--bd:#c9cfc4;--ac:#2f6f4f;--mu:#68746d}
+@media(prefers-color-scheme:dark){:root{--bg:#171c19;--pn:#1f2622;--fg:#e4eae6;--bd:#34403a;--ac:#6fcf97;--mu:#8e9b94}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{display:flex;background:var(--bg);color:var(--fg);font:13px/1.4 system-ui,sans-serif}
+#ui{width:310px;overflow-y:auto;padding:12px;background:var(--pn);border-right:1px solid var(--bd)}
+#cv{flex:1;min-width:0;height:100%;display:block;cursor:grab}
+h1{font-size:17px;margin:0 0 8px}h2{font-size:13px;margin:14px 0 6px;padding-top:10px;border-top:1px solid var(--bd)}
+label{display:grid;grid-template-columns:62px 1fr 34px;align-items:center;gap:4px;margin:2px 0}
+output{text-align:right;color:var(--mu)}input[type=range]{width:100%}
+select,button,input[type=file]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:4px 7px;margin:2px 2px 2px 0}
+button{cursor:pointer}button:hover{border-color:var(--ac)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac)}
+button.p{background:var(--ac);color:var(--pn);border-color:var(--ac)}
+small{color:var(--mu);display:block;margin:3px 0}
+ol{margin:4px 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:3px}
+ol li{padding:2px 8px;border:1px solid var(--bd);border-radius:4px;cursor:pointer}ol li.on{background:var(--ac);color:var(--pn);border-color:var(--ac)}
+@media(max-width:700px){body{flex-direction:column-reverse}#ui{width:100%;height:45%}}
+</style></head><body>
+<div id="ui">
+<h1>Böcek Animatörü</h1>
+<small>Parçaya tıkla = seç. Sürükle = X/Y döndür, Alt+sürükle = Z. Boşlukta sürükle = kamera döndür, sağ tuş / orta tuş = kaydır, tekerlek = yakınlaştır.</small>
+<h2>Görünüm (Bölüm 2)</h2>
+<select id="mode"><option value="0">Renk</option><option value="1">Doku (ışıksız)</option><option value="2" selected>Yumuşak gölgeleme</option><option value="3">Gölgeli doku</option></select>
+<label style="grid-template-columns:1fr"><span>Doku resmi yükle</span><input type="file" id="texFile" accept="image/*"></label>
+<label style="grid-template-columns:1fr"><span>Seçili parçaya OBJ yükle</span><input type="file" id="objFile" accept=".obj"></label>
+<h2>Seçili parça: <span id="selName">yok</span></h2><div id="jsl"></div>
+<h2>Genel konum ve yön</h2><div id="gsl"></div>
+<h2>Animasyon (Bölüm 3)</h2>
+<button id="addK" class="p">Kare ekle</button><button id="updK">Kareyi güncelle</button><button id="delK">Sil</button><button id="clrK">Temizle</button>
+<ol id="kl"></ol>
+<label><span>Kare süresi</span><input type="range" id="dur" min="0.03" max="1.5" step="0.01" value="0.25"><output id="durO">0.25</output></label>
+<button id="play" class="p">Oynat</button><label style="display:inline"><input type="checkbox" id="loop" checked> döngü</label>
+<div><button id="preWalk">Hazır: Yürüme</button><button id="preFly">Hazır: Kanat çırpma</button></div>
+<div><button id="save">Kaydet (.json)</button><input type="file" id="load" accept=".json"></div>
+</div>
+<canvas id="cv"></canvas>
+<script>
+"use strict";
+/* ---------- Matris yardımcıları (sütun öncelikli, gl-matrix kullanılmadı) ---------- */
+const m4={
+ id:()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]),
+ mul(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o},
+ T(x,y,z){const m=m4.id();m[12]=x;m[13]=y;m[14]=z;return m},
+ S(x,y,z){const m=m4.id();m[0]=x;m[5]=y;m[10]=z;return m},
+ Rx(d){const m=m4.id(),c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);m[5]=c;m[6]=s;m[9]=-s;m[10]=c;return m},
+ Ry(d){const m=m4.id(),c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);m[0]=c;m[2]=-s;m[8]=s;m[10]=c;return m},
+ Rz(d){const m=m4.id(),c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);m[0]=c;m[1]=s;m[4]=-s;m[5]=c;return m},
+ persp(fy,a,n,f){const t=1/Math.tan(fy/2),m=new Float32Array(16);m[0]=t/a;m[5]=t;m[10]=(f+n)/(n-f);m[11]=-1;m[14]=2*f*n/(n-f);return m}
+};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+function normalMat(m){ // ters devrik 3x3 (yön yeterli, shader normalize eder)
+ const a=[m[0],m[1],m[2]],b=[m[4],m[5],m[6]],c=[m[8],m[9],m[10]];
+ return new Float32Array([...cross(b,c),...cross(c,a),...cross(a,b)]);
+}
+
+/* ---------- WebGL ---------- */
+const cv=document.getElementById('cv'),gl=cv.getContext('webgl',{antialias:true});
+const VS=`attribute vec3 aP,aN;attribute vec2 aT;uniform mat4 uMV,uP;uniform mat3 uNm;
+varying vec3 vN,vE;varying vec2 vT;
+void main(){vec4 e=uMV*vec4(aP,1.);vE=e.xyz;vN=uNm*aN;vT=aT;gl_Position=uP*e;}`;
+const FS=`precision mediump float;varying vec3 vN,vE;varying vec2 vT;
+uniform int uMode;uniform vec3 uCol;uniform sampler2D uTex;uniform float uSel;
+void main(){
+ if(uMode==4){gl_FragColor=vec4(uCol,1.);return;}          // seçim (picking) geçişi
+ vec3 base=uCol;if(uMode==1||uMode==3)base=texture2D(uTex,vT).rgb;
+ vec3 c=base;
+ if(uMode>=2){vec3 n=normalize(vN),V=normalize(-vE),L=normalize(vec3(.4,.8,.6));
+  if(dot(n,V)<0.)n=-n;vec3 H=normalize(L+V);                // Blinn-Phong, ışık kamerayla birlikte
+  c=base*(.28+.72*max(dot(n,L),0.))+vec3(.22)*pow(max(dot(n,H),0.),32.);}
+ gl_FragColor=vec4(mix(c,vec3(1.,.4,.2),uSel*.4),1.);}`;
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o}
+const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));
+['aP','aN','aT'].forEach((n,i)=>gl.bindAttribLocation(pr,i,n));gl.linkProgram(pr);gl.useProgram(pr);
+const U=n=>gl.getUniformLocation(pr,n);
+const uMV=U('uMV'),uP=U('uP'),uNm=U('uNm'),uMode=U('uMode'),uCol=U('uCol'),uSel=U('uSel');
+gl.enable(gl.DEPTH_TEST);
+
+/* ---------- Mesh üretimi: küp, küre, silindir (düzleştirilmiş üçgenler) + OBJ ---------- */
+function mkMesh(P,N,T){
+ const b=(d,n)=>{const o=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,o);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(d),gl.STATIC_DRAW);return o};
+ return{p:b(P),n:b(N),t:b(T),c:P.length/3};
+}
+function cube(){const P=[],N=[],T=[];
+ const F=[[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,-1]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[-1,0,0],[0,1,0]]];
+ for(const [n,u,v] of F){const q=[[-1,-1],[1,-1],[1,1],[-1,1]];
+  for(const i of [0,1,2,0,2,3]){const [a,b]=q[i];P.push(...[0,1,2].map(k=>.5*(n[k]+a*u[k]+b*v[k])));N.push(...n);T.push((a+1)/2,(b+1)/2)}}
+ return mkMesh(P,N,T)}
+function sphere(S=24,R=16){const P=[],N=[],T=[];
+ const v=(i,j)=>{const th=i/R*Math.PI,ph=j/S*2*Math.PI;return[Math.sin(th)*Math.cos(ph),Math.cos(th),Math.sin(th)*Math.sin(ph),j/S,i/R]};
+ for(let i=0;i<R;i++)for(let j=0;j<S;j++)for(const q of [[i,j],[i+1,j],[i+1,j+1],[i,j],[i+1,j+1],[i,j+1]]){const a=v(...q);P.push(a[0],a[1],a[2]);N.push(a[0],a[1],a[2]);T.push(a[3],a[4])}
+ return mkMesh(P,N,T)}
+function cylinder(S=20){const P=[],N=[],T=[];const pt=(p,n,t)=>{P.push(...p);N.push(...n);T.push(...t)};
+ for(let j=0;j<S;j++){const a=j/S*2*Math.PI,b=(j+1)/S*2*Math.PI;
+  const A=[.5*Math.cos(a),.5*Math.sin(a)],B=[.5*Math.cos(b),.5*Math.sin(b)];
+  const nA=[Math.cos(a),0,Math.sin(a)],nB=[Math.cos(b),0,Math.sin(b)];
+  pt([A[0],-.5,A[1]],nA,[j/S,0]);pt([B[0],-.5,B[1]],nB,[(j+1)/S,0]);pt([B[0],.5,B[1]],nB,[(j+1)/S,1]);
+  pt([A[0],-.5,A[1]],nA,[j/S,0]);pt([B[0],.5,B[1]],nB,[(j+1)/S,1]);pt([A[0],.5,A[1]],nA,[j/S,1]);
+  for(const y of [.5,-.5]){const n=[0,y*2,0];pt([0,y,0],n,[.5,.5]);pt([A[0],y,A[1]],n,[.5+A[0],.5+A[1]]);pt([B[0],y,B[1]],n,[.5+B[0],.5+B[1]])}}
+ return mkMesh(P,N,T)}
+function parseOBJ(txt){ // v/vt/vn, çokgenleri üçgenler, normal yoksa yüz normalini kullanır
+ const v=[],vt=[],vn=[],P=[],N=[],T=[],ix=(i,a)=>i<0?a.length+i:i-1;
+ for(const l of txt.split('\n')){const s=l.trim().split(/\s+/);
+  if(s[0]=='v')v.push(s.slice(1,4).map(Number));else if(s[0]=='vt')vt.push(s.slice(1,3).map(Number));
+  else if(s[0]=='vn')vn.push(s.slice(1,4).map(Number));
+  else if(s[0]=='f'){const c=s.slice(1).map(q=>q.split('/').map(x=>x===''||x===undefined?NaN:parseInt(x)));
+   for(let i=1;i<c.length-1;i++){const t=[c[0],c[i],c[i+1]],p=t.map(x=>v[ix(x[0],v)]);
+    const fn=cross(p[1].map((q,k)=>q-p[0][k]),p[2].map((q,k)=>q-p[0][k]));const L=Math.hypot(...fn)||1;
+    t.forEach((x,k)=>{P.push(...p[k]);N.push(...(x[2]==x[2]?vn[ix(x[2],vn)]:fn.map(q=>q/L)));T.push(...(x[1]==x[1]?vt[ix(x[1],vt)]:[0,0]))})}}}
+ return mkMesh(P,N,T)}
+const meshes={cube:cube(),sphere:sphere(),cyl:cylinder()};
+
+/* ---------- Doku ---------- */
+const tex=gl.createTexture();
+function setTex(src){gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+ for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v)}
+(()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'); // varsayılan: arı çizgileri
+ for(let i=0;i<8;i++){x.fillStyle=i%2?'#2a2118':'#f2c230';x.fillRect(i*16,0,16,128)}setTex(c)})();
+
+/* ---------- Hiyerarşik model: düğüm ağacı ---------- */
+const nodes=[],legs=[];let wingIdx=[];
+function node(name,parent,t,mesh,scl,off,col,rot=[0,0,0]){
+ const n={name,t,mesh,scl,off,col,rot:[...rot],kids:[]};nodes.push(n);const i=nodes.length-1;
+ if(parent>=0)nodes[parent].kids.push(i);return i}
+(function build(){
+ const th=node('Göğüs',-1,[0,0,0],'sphere',[.9,.55,.6],[0,0,0],[.85,.6,.12]);
+ node('Karın',th,[-.55,-.05,0],'sphere',[1.2,.62,.62],[-.5,0,0],[.95,.75,.15],[0,0,0]);
+ const hd=node('Baş',th,[.6,.1,0],'sphere',[.45,.4,.4],[.15,0,0],[.2,.15,.12]);
+ for(const s of [1,-1]){
+  node('Göz '+(s>0?'sağ':'sol'),hd,[.28,.08,s*.17],'sphere',[.14,.14,.14],[0,0,0],[.05,.05,.05]);
+  node('Anten '+(s>0?'sağ':'sol'),hd,[.3,.2,s*.12],'cyl',[.04,.55,.04],[0,.27,0],[.2,.15,.12],[s*20,0,-50]);
+  const w=node('Kanat '+(s>0?'sağ':'sol'),th,[0,.45,s*.15],'cube',[.7,.03,1.4],[-.1,0,s*.7],[.75,.85,.95]);wingIdx.push([w,s]);
+  for(let k=0;k<3;k++){
+   const up=node('Üst bacak '+(s>0?'sağ':'sol')+(k+1),th,[[.3,0,-.3][k],-.2,s*.35],'cyl',[.09,.7,.09],[0,-.35,0],[.25,.18,.12],[s*-55,0,0]);
+   const lo=node('Alt bacak '+(s>0?'sağ':'sol')+(k+1),up,[0,-.7,0],'cyl',[.07,.8,.07],[0,-.4,0],[.3,.22,.15],[s*50,0,0]);
+   legs.push({up,lo,s,grp:(k+(s>0?0:1))%2});}}
+})();
+const REST=nodes.map(n=>[...n.rot]);
+
+/* ---------- Çizim: açık matris yığını ile ağaç gezme ---------- */
+const G=[0,0,0,0,0,0]; // konum x,y,z + yön rx,ry,rz
+let V=m4.id(),Pm=m4.id(),sel=-1,mode=2;
+const cam={yaw:-30,pitch:20,dist:7,px:0,py:0};
+const stack=[];let cur=null;
+function drawMesh(mesh,M,col,hl,md){
+ const MV=m4.mul(V,M);gl.uniformMatrix4fv(uMV,false,MV);gl.uniformMatrix3fv(uNm,false,normalMat(MV));
+ gl.uniform3fv(uCol,col);gl.uniform1f(uSel,hl?1:0);gl.uniform1i(uMode,md);
+ [[mesh.p,0,3],[mesh.n,1,3],[mesh.t,2,2]].forEach(([b,i,sz])=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,sz,gl.FLOAT,false,0,0)});
+ gl.drawArrays(gl.TRIANGLES,0,mesh.c)}
+function drawNode(i,pick){
+ const n=nodes[i];stack.push(cur);                                   // push
+ cur=m4.mul(cur,m4.T(...n.t));cur=m4.mul(cur,m4.Ry(n.rot[1]));cur=m4.mul(cur,m4.Rz(n.rot[2]));cur=m4.mul(cur,m4.Rx(n.rot[0]));
+ const M=m4.mul(cur,m4.mul(m4.T(...n.off),m4.S(...n.scl)));         // sadece parçanın kendisine uygulanır
+ if(pick)drawMesh(meshes[n.mesh],M,[(i+1)/255,0,0],false,4);
+ else drawMesh(meshes[n.mesh],M,n.col,i===sel,mode);
+ for(const k of n.kids)drawNode(k,pick);
+ cur=stack.pop()}                                                    // pop
+function scene(pick){
+ const a=cv.width/cv.height;Pm=m4.persp(Math.PI/4,a,.1,100);
+ V=m4.mul(m4.T(cam.px,cam.py,-cam.dist),m4.mul(m4.Rx(cam.pitch),m4.Ry(cam.yaw)));
+ gl.uniformMatrix4fv(uP,false,Pm);gl.viewport(0,0,cv.width,cv.height);
+ if(pick)gl.clearColor(0,0,0,1);else gl.clearColor(.93,.94,.91,1);
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ if(!pick){gl.uniform1i(uSel,0);drawMesh(meshes.cube,m4.mul(m4.T(0,-1.45,0),m4.S(14,.04,14)),[.72,.78,.68],false,2)} // zemin
+ cur=m4.mul(m4.T(G[0],G[1],G[2]),m4.mul(m4.Ry(G[4]),m4.mul(m4.Rx(G[3]),m4.Rz(G[5]))));
+ drawNode(0,pick)}
+function resize(){const d=window.devicePixelRatio||1,w=Math.round(cv.clientWidth*d),h=Math.round(cv.clientHeight*d);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}}
+function pickAt(cx,cy){ // her parçayı kendi kimlik rengiyle çiz, pikseli oku
+ resize();scene(true);const px=new Uint8Array(4);
+ gl.readPixels(Math.floor(cx*cv.width/cv.clientWidth),Math.floor(cv.height-1-cy*cv.height/cv.clientHeight),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);
+ return px[0]-1}
+
+/* ---------- Arayüz: sürgüler (Bölüm 4) ---------- */
+const syncs=[];
+function slider(host,label,min,max,step,get,set){
+ const d=document.createElement('label');d.innerHTML=`<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
+ const r=d.children[1],o=d.children[2];const upd=()=>{const v=get();r.value=v;o.textContent=(+v).toFixed(step<1?1:0)};
+ r.oninput=()=>{set(+r.value);upd()};upd();syncs.push(upd);host.append(d)}
+const syncAll=()=>{document.getElementById('selName').textContent=sel<0?'yok':nodes[sel].name;syncs.forEach(f=>f())};
+['X','Y','Z'].forEach((a,k)=>slider(jsl,'Döndür '+a,-180,180,1,()=>sel<0?0:nodes[sel].rot[k],v=>{if(sel>=0)nodes[sel].rot[k]=v}));
+[['Konum X',-4,4,.1],['Konum Y',-3,3,.1],['Konum Z',-4,4,.1],['Eğim X',-180,180,1],['Yön Y',-180,180,1],['Yan Z',-180,180,1]]
+ .forEach(([l,mn,mx,st],i)=>slider(gsl,l,mn,mx,st,()=>G[i],v=>G[i]=v));
+
+/* ---------- Fare: seçme, doğrudan manipülasyon, orbit/pan/zoom ---------- */
+let drag=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('mousedown',e=>{
+ const r=cv.getBoundingClientRect();
+ if(e.button===0){const id=pickAt(e.clientX-r.left,e.clientY-r.top);
+  if(id>=0&&id<nodes.length){sel=id;syncAll();drag='part'}else{sel=-1;syncAll();drag='orbit'}}
+ else drag='pan';
+ cv.style.cursor='grabbing'});
+addEventListener('mouseup',()=>{drag=null;cv.style.cursor='grab'});
+addEventListener('mousemove',e=>{if(!drag)return;const dx=e.movementX,dy=e.movementY;
+ if(drag==='part'&&sel>=0){const q=nodes[sel].rot;if(e.altKey)q[2]+=dx*.5;else{q[1]+=dx*.5;q[0]+=dy*.5}syncAll()}
+ else if(drag==='orbit'){cam.yaw+=dx*.4;cam.pitch=Math.max(-89,Math.min(89,cam.pitch+dy*.4))}
+ else if(drag==='pan'){const k=cam.dist*.0016;cam.px+=dx*k;cam.py-=dy*k}});
+cv.addEventListener('wheel',e=>{e.preventDefault();cam.dist=Math.max(2,Math.min(30,cam.dist*Math.exp(e.deltaY*.001)))},{passive:false});
+
+/* ---------- Animasyon: anahtar kareler, interpolasyon, kaydet/yükle ---------- */
+let frames=[],ki=-1,playing=false,tAnim=0;
+const snap=()=>({g:[...G],r:nodes.map(n=>[...n.rot])});
+const apply=f=>{f.g.forEach((v,i)=>G[i]=v);f.r.forEach((r,i)=>{if(nodes[i])nodes[i].rot=[...r]})};
+const lerp=(a,b,t)=>a+(b-a)*t;
+const blend=(A,B,t)=>({g:A.g.map((v,i)=>lerp(v,B.g[i],t)),r:A.r.map((r,i)=>r.map((v,k)=>lerp(v,B.r[i][k],t)))});
+const $=id=>document.getElementById(id);
+function renderKF(){$('kl').innerHTML=frames.map((_,i)=>`<li data-i="${i}" class="${i===ki?'on':''}">${i+1}</li>`).join('')||'<small>Henüz kare yok</small>'}
+$('kl').onclick=e=>{const i=e.target.dataset.i;if(i===undefined)return;ki=+i;apply(frames[ki]);renderKF();syncAll()};
+$('addK').onclick=()=>{frames.splice(ki+1,0,snap());ki++;renderKF()};
+$('updK').onclick=()=>{if(ki>=0)frames[ki]=snap()};
+$('delK').onclick=()=>{if(ki>=0){frames.splice(ki,1);ki=Math.min(ki,frames.length-1);renderKF()}};
+$('clrK').onclick=()=>{frames=[];ki=-1;renderKF()};
+$('dur').oninput=e=>$('durO').textContent=e.target.value;
+$('play').onclick=()=>{if(frames.length<2)return;playing=!playing;tAnim=0;$('play').textContent=playing?'Durdur':'Oynat'};
+function stopPlay(){playing=false;$('play').textContent='Oynat'}
+function setDur(d){$('dur').value=d;$('durO').textContent=d}
+const base=()=>({g:[0,0,0,0,0,0],r:REST.map(r=>[...r])});
+function presetWalk(){ // tripod yürüyüşü: 8 kare, iki bacak grubu ters fazda
+ const N=8,fr=[];
+ for(let i=0;i<N;i++){const f=base(),ph=i/N*2*Math.PI;
+  for(const L of legs){const p=ph+(L.grp?Math.PI:0),lift=Math.max(0,Math.cos(p));
+   f.r[L.up][2]=22*Math.sin(p);f.r[L.up][0]=-L.s*(55+18*lift)}
+  f.r[1][2]=4*Math.sin(2*ph);f.g[1]=.03*Math.sin(2*ph);fr.push(f)}
+ return fr}
+function presetFly(){ // 8 kare kanat çırpma, gövde hafifçe sallanır, bacaklar geriye sarkar
+ const fr=[];
+ for(let i=0;i<8;i++){const f=base(),ph=i/8*2*Math.PI;
+  for(const [w,s] of wingIdx)f.r[w][0]=s*45*Math.sin(ph);
+  for(const L of legs){f.r[L.up][2]=-25;f.r[L.up][0]=-L.s*30}
+  f.g[1]=.15*Math.sin(ph);f.g[3]=-10;fr.push(f)}
+ return fr}
+$('preWalk').onclick=()=>{stopPlay();frames=presetWalk();ki=0;setDur(.12);renderKF();apply(frames[0]);syncAll()};
+$('preFly').onclick=()=>{stopPlay();frames=presetFly();ki=0;setDur(.05);renderKF();apply(frames[0]);syncAll()};
+$('save').onclick=()=>{const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,dur:+$('dur').value,frames})],{type:'application/json'}));
+ a.download='animasyon.json';a.click();URL.revokeObjectURL(a.href)};
+$('load').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const d=JSON.parse(r.result);stopPlay();frames=d.frames;if(d.dur)setDur(d.dur);ki=0;renderKF();apply(frames[0]);syncAll()}catch(x){alert('Dosya okunamadı: '+x.message)}};r.readAsText(f);e.target.value=''};
+
+/* ---------- Doku / OBJ yükleme, görünüm modu ---------- */
+$('mode').onchange=e=>mode=+e.target.value;
+$('texFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{setTex(im);URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)};
+$('objFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(sel<0){alert('Önce bir parça seç.');return}
+ const r=new FileReader();r.onload=()=>{const n=nodes[sel];meshes['obj'+sel]=parseOBJ(r.result);n.mesh='obj'+sel;n.scl=[1,1,1];n.off=[0,0,0]};r.readAsText(f);e.target.value=''};
+
+/* ---------- Ana döngü ---------- */
+let last=0;
+function loop(ts){const dt=Math.min((ts-last)/1000,.1);last=ts;
+ if(playing){const n=frames.length,seg=$('loop').checked?n:n-1;tAnim+=dt/+$('dur').value;
+  if(tAnim>=seg){if($('loop').checked)tAnim%=seg;else{stopPlay();tAnim=0}}
+  const i=Math.floor(tAnim);apply(blend(frames[i],frames[(i+1)%n],tAnim-i));syncAll()}
+ resize();scene(false);requestAnimationFrame(loop)}
+renderKF();requestAnimationFrame(loop);
+</script></body></html>
+>>>>>>> main

@@ -113,7 +113,16 @@ function drawPart( Id ) {
 
     var instanceMatrix = modelViewMatrix;
     gl.uniformMatrix4fv( modelViewMatrixLoc, false, flatten( instanceMatrix ) );
-    gl.uniformMatrix3fv( normalMatrixLoc, false, flatten( normalMatrix( instanceMatrix, true ) ) );
+    // Normal matrix = upper-left 3x3 of the model-view matrix, as in
+    // shadedSphere4.js. This is valid because the model only uses rotations
+    // and translations (no scaling). Built with mat3() so flatten() transposes
+    // it to column-major like the other matrices (the book's version uses a
+    // plain array, which uploads the transpose).
+    var m = instanceMatrix;
+    var nMatrix = mat3( m[0][0], m[0][1], m[0][2],
+                        m[1][0], m[1][1], m[1][2],
+                        m[2][0], m[2][1], m[2][2] );
+    gl.uniformMatrix3fv( normalMatrixLoc, false, flatten( nMatrix ) );
 
     gl.uniform4fv( ambientProductLoc, flatten( mult( lightAmbient, partColor[Id] ) ) );
     gl.uniform4fv( diffuseProductLoc, flatten( mult( lightDiffuse, partColor[Id] ) ) );
@@ -241,9 +250,10 @@ function wiggle( t ) {
     for ( var Id = 0; Id < numNodes; ++Id ) {
         var name = partName[Id];
         var side = name.slice( -2 ) == "_R" ? -1 : 1;
-        if ( name.indexOf( "wing" ) >= 0 )            theta[Id] = vec3( 0, 0, side * 35 * Math.sin( t * 6 ) );
+        if ( name.indexOf( "wing" ) >= 0 )            theta[Id] = vec3( 0, 0, side * 30 * Math.sin( t * 6 ) );
         else if ( name.indexOf( "_upper" ) >= 0 )     theta[Id] = vec3( 15 * Math.sin( t * 3 + Id ), 0, 0 );
         else if ( name.indexOf( "_lower" ) >= 0 )     theta[Id] = vec3( 0, 0, side * 15 * Math.sin( t * 3 + Id ) );
+        else if ( name.indexOf( "leg_" ) == 0 )       theta[Id] = vec3( 15 * Math.sin( t * 3 + Id ), 0, 0 );
         else if ( name.indexOf( "antenna" ) == 0 )    theta[Id] = vec3( 10 * Math.sin( t * 2 ), 0, 0 );
         else if ( name == "head" )                    theta[Id] = vec3( 0, 10 * Math.sin( t ), 0 );
         else if ( name == "abdomen" )                 theta[Id] = vec3( 8 * Math.sin( t * 1.5 ), 0, 0 );

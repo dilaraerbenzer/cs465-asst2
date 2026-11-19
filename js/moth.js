@@ -22,7 +22,7 @@
 //
 //  Node transform (same idea as figure.js: move to the joint, then rotate):
 //      M[Id] = translate(pivot[Id] - pivot[parent] + position[Id])
-//              * rotateZ(theta[Id][2]) * rotateY(theta[Id][1]) * rotateX(theta[Id][0])
+//              * rotate(theta[Id][2], z) * rotate(theta[Id][1], y) * rotate(theta[Id][0], x)
 //
 
 "use strict";
@@ -63,9 +63,9 @@ function initNodes( Id ) {
     var m = translate( offset[Id][0] + position[Id][0],
                        offset[Id][1] + position[Id][1],
                        offset[Id][2] + position[Id][2] );
-    m = mult( m, rotateZ( theta[Id][2] ) );
-    m = mult( m, rotateY( theta[Id][1] ) );
-    m = mult( m, rotateX( theta[Id][0] ) );
+    m = mult( m, rotate( theta[Id][2], [ 0, 0, 1 ] ) );
+    m = mult( m, rotate( theta[Id][1], [ 0, 1, 0 ] ) );
+    m = mult( m, rotate( theta[Id][0], [ 1, 0, 0 ] ) );
     figure[Id].transform = m;
 }
 

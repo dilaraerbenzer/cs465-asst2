@@ -4,295 +4,196 @@
       "name": "thorax",
       "parent": null,
       "pivot": [
-        0,
-        0,
-        0
+        0.0,
+        -0.0,
+        -0.0
       ],
       "color": [
-        0.14,
-        0.06,
-        0.16
-      ]
+        0.16,
+        0.08,
+        0.18
+      ],
+      "source": "tripo_part_4"
     },
     {
       "name": "head",
       "parent": "thorax",
       "pivot": [
-        0,
-        0.02,
-        0.28
+        -0.00928,
+        0.01146,
+        0.25522
       ],
       "color": [
-        0.08,
         0.07,
-        0.09
-      ]
+        0.06,
+        0.08
+      ],
+      "source": "tripo_part_5"
     },
     {
       "name": "antenna_L",
       "parent": "head",
       "pivot": [
-        0.06,
-        0.14,
-        0.5
+        0.12957,
+        0.07506,
+        0.34058
       ],
       "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+        0.8,
+        0.76,
+        0.7
+      ],
+      "source": "tripo_part_6"
     },
     {
       "name": "antenna_R",
       "parent": "head",
       "pivot": [
-        -0.06,
-        0.14,
-        0.5
+        -0.08821,
+        0.13295,
+        0.3489
       ],
       "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+        0.8,
+        0.76,
+        0.7
+      ],
+      "source": "tripo_part_12"
     },
     {
       "name": "abdomen",
       "parent": "thorax",
       "pivot": [
-        0,
-        0,
-        -0.25
+        -0.01329,
+        -0.05037,
+        -0.29775
       ],
       "color": [
-        0.25,
-        0.1,
-        0.28
-      ]
+        0.28,
+        0.12,
+        0.3
+      ],
+      "source": "tripo_part_1"
     },
     {
-      "name": "forewing_L",
+      "name": "wing_L",
       "parent": "thorax",
       "pivot": [
-        0.16,
-        0.14,
+        0.22099,
+        0.08282,
+        -0.21982
+      ],
+      "color": [
+        0.07,
+        0.06,
         0.08
       ],
-      "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
+      "source": "tripo_part_3"
     },
     {
-      "name": "hindwing_L",
+      "name": "wing_R",
       "parent": "thorax",
       "pivot": [
-        0.16,
-        0.12,
-        -0.12
+        -0.17922,
+        0.15154,
+        -0.22443
       ],
       "color": [
-        0.25,
-        0.1,
-        0.28
-      ]
-    },
-    {
-      "name": "forewing_R",
-      "parent": "thorax",
-      "pivot": [
-        -0.16,
-        0.14,
+        0.07,
+        0.06,
         0.08
       ],
-      "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
+      "source": "tripo_part_2"
     },
     {
-      "name": "hindwing_R",
+      "name": "leg_front_L",
       "parent": "thorax",
       "pivot": [
-        -0.16,
-        0.12,
-        -0.12
+        0.10073,
+        -0.24619,
+        0.14081
       ],
       "color": [
-        0.25,
-        0.1,
-        0.28
-      ]
+        0.8,
+        0.76,
+        0.7
+      ],
+      "source": "tripo_part_9"
     },
     {
-      "name": "leg_front_upper_L",
+      "name": "leg_front_R",
       "parent": "thorax",
       "pivot": [
-        0.14,
-        -0.12,
-        0.15
+        -0.21613,
+        -0.16104,
+        0.17484
       ],
       "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
-    },
-    {
-      "name": "leg_front_lower_L",
-      "parent": "leg_front_upper_L",
-      "pivot": [
-        0.45,
-        0.0,
-        0.4
+        0.8,
+        0.76,
+        0.7
       ],
-      "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+      "source": "tripo_part_7"
     },
     {
-      "name": "leg_mid_upper_L",
+      "name": "leg_mid_L",
       "parent": "thorax",
       "pivot": [
-        0.14,
-        -0.12,
-        0.0
+        0.28132,
+        -0.18564,
+        -0.01556
       ],
       "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
-    },
-    {
-      "name": "leg_mid_lower_L",
-      "parent": "leg_mid_upper_L",
-      "pivot": [
-        0.45,
-        0.0,
-        0.0
+        0.8,
+        0.76,
+        0.7
       ],
-      "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+      "source": "tripo_part_10"
     },
     {
-      "name": "leg_hind_upper_L",
+      "name": "leg_mid_R",
       "parent": "thorax",
       "pivot": [
-        0.14,
-        -0.12,
-        -0.15
+        -0.33363,
+        -0.05122,
+        -0.01189
       ],
       "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
-    },
-    {
-      "name": "leg_hind_lower_L",
-      "parent": "leg_hind_upper_L",
-      "pivot": [
-        0.45,
-        0.0,
-        -0.4
+        0.8,
+        0.76,
+        0.7
       ],
-      "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+      "source": "tripo_part_11"
     },
     {
-      "name": "leg_front_upper_R",
+      "name": "leg_hind_L",
       "parent": "thorax",
       "pivot": [
-        -0.14,
-        -0.12,
-        0.15
+        0.19349,
+        -0.26756,
+        -0.25522
       ],
       "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
-    },
-    {
-      "name": "leg_front_lower_R",
-      "parent": "leg_front_upper_R",
-      "pivot": [
-        -0.45,
-        0.0,
-        0.4
+        0.8,
+        0.76,
+        0.7
       ],
-      "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+      "source": "tripo_part_0"
     },
     {
-      "name": "leg_mid_upper_R",
+      "name": "leg_hind_R",
       "parent": "thorax",
       "pivot": [
-        -0.14,
-        -0.12,
-        0.0
+        -0.24481,
+        -0.17686,
+        -0.25464
       ],
       "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
-    },
-    {
-      "name": "leg_mid_lower_R",
-      "parent": "leg_mid_upper_R",
-      "pivot": [
-        -0.45,
-        0.0,
-        0.0
+        0.8,
+        0.76,
+        0.7
       ],
-      "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
-    },
-    {
-      "name": "leg_hind_upper_R",
-      "parent": "thorax",
-      "pivot": [
-        -0.14,
-        -0.12,
-        -0.15
-      ],
-      "color": [
-        0.08,
-        0.07,
-        0.09
-      ]
-    },
-    {
-      "name": "leg_hind_lower_R",
-      "parent": "leg_hind_upper_R",
-      "pivot": [
-        -0.45,
-        0.0,
-        -0.4
-      ],
-      "color": [
-        0.85,
-        0.82,
-        0.76
-      ]
+      "source": "tripo_part_8"
     }
   ]
 }

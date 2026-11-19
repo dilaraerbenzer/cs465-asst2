@@ -1,4 +1,32 @@
-# Modeling the goth moth in Blender (Part 1)
+# Modeling the goth moth (Part 1)
+
+## Current model: Tripo, segmented
+
+`models/moth_tripo.obj` is the source model (generated with Tripo and
+segmented into 13 parts). `tools/rig_from_tripo.py` converts it into the files
+the app loads (`models/moth.obj` + `models/moth.rig.json`):
+
+* renames the parts (`tripo_part_4` -> `thorax`, ...; the table is `PARTS`
+  at the top of the script),
+* turns the moth to face +Z, centres it on the thorax and scales it,
+* finds every joint automatically: the pivot of a part is the centre of the
+  vertices where it touches its parent.
+
+Hierarchy: `thorax` -> `head` (-> `antenna_L`, `antenna_R`), `abdomen`,
+`wing_L`, `wing_R`, `leg_{front,mid,hind}_{L,R}`.
+
+Each leg is still one piece, and each wing has its fore- and hindwing fused.
+For more joints (better model-complexity grade), split the legs at the knee in
+Blender (Edit mode, X-ray, box-select the lower half, P -> Selection), export
+again as `models/moth_tripo.obj`, add the new parts to `PARTS` (e.g.
+`leg_front_lower_L` with parent `leg_front_L`) and re-run:
+
+```bash
+python3 tools/rig_from_tripo.py
+```
+
+The rest of this file is the from-scratch Blender workflow.
+
 
 The app loads two files:
 

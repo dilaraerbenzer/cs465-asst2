@@ -212,9 +212,9 @@
       "name": "leg_front_lower_R",
       "parent": "leg_front_R",
       "pivot": [
-        -0.35728,
-        -0.36413,
-        0.491
+        -0.2828,
+        -0.17304,
+        0.3309
       ],
       "color": [
         0.8,

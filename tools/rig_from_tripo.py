@@ -89,6 +89,41 @@ def read_obj(path):
             np.array(VN, dtype=np.float64), objects)
 
 
+def connected_pieces(faces):
+    """Groups face indices into pieces connected through shared vertices."""
+    parent = {}
+    def find(a):
+        while parent.setdefault(a, a) != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    vids = [[int(c.split("/")[0]) for c in face] for face in faces]
+    for f in vids:
+        for v in f[1:]:
+            parent[find(v)] = find(f[0])
+    pieces = {}
+    for i, f in enumerate(vids):
+        pieces.setdefault(find(f[0]), []).append(i)
+    return sorted(pieces.values(), key=len, reverse=True)
+
+
+def fix_split(objects, upper, lower):
+    """When a leg is split in Blender with a box-select, bits of the lower leg
+    that were missed (e.g. its back side without X-ray) stay in the upper
+    object as small loose pieces, and then do not follow the knee. Keep only
+    the upper leg's main connected piece and move the loose pieces to the
+    lower leg."""
+    pieces = connected_pieces(objects[upper])
+    if len(pieces) <= 1:
+        return
+    keep = set(pieces[0])
+    stray = [f for i, f in enumerate(objects[upper]) if i not in keep]
+    objects[upper] = [f for i, f in enumerate(objects[upper]) if i in keep]
+    objects[lower] = objects[lower] + stray
+    print(f"fixed split: moved {len(stray)} faces in {len(pieces) - 1} loose pieces "
+          f"from {upper} to {lower}")
+
+
 def part_vertex_ids(faces):
     ids = set()
     for face in faces:
@@ -122,6 +157,11 @@ def main():
                 raise SystemExit(f"error: none of {srcs} is in {SRC}")
             continue                                   # leg not split (yet)
         parts.append((found[0], name, parent, color, tex))
+
+    src_by_name = {name: src for src, name, *_ in parts}
+    for src, name, parent, *_ in parts:
+        if "_lower" in name:
+            fix_split(objects, src_by_name[parent], src)
 
     ids = {src: part_vertex_ids(objects[src]) for src, *_ in parts}
     thorax_src = parts[0][0]

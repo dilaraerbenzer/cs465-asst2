@@ -45,7 +45,8 @@ Code reused from the book is marked at the top of each file, with what we change
   its joint (Alt+drag: z axis), joint sliders, global position/orientation
   sliders; orbit (drag), pan (right-drag or Shift+drag), zoom (wheel);
   W/A/S/D walk the moth around the ground relative to the camera (it turns
-  to face where it is going and the camera follows).
+  to face where it is going and the camera follows); hold Space to fly up,
+  let go to glide back down.
 * **Joint limits:** each joint has a realistic range of motion (table in
   `js/moth.js`), enforced for sliders, dragging, presets and loaded files;
   a checkbox turns them off.

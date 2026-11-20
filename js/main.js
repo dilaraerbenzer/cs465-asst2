@@ -59,14 +59,18 @@ var groundProgram, groundBuffer, groundTexture = null, groundLoc = {};
 var renderMode = 3;
 var selectedId = -1;         // -1 = no part selected
 
-// Where WASD has walked the moth to on the ground: a position in the xz
-// plane and a heading (degrees about y, 0 = facing +z). It is applied on top
-// of the pose, so presets and keyframes still play while the moth is moving.
-var placement = { x: 0.0, z: 0.0, heading: 0.0 };
+// Where WASD / Space have moved the moth to: a position (x, z on the ground,
+// y = height above it) and a heading (degrees about y, 0 = facing +z). It is
+// applied on top of the pose, so presets and keyframes still play while the
+// moth is moving.
+var placement = { x: 0.0, y: 0.0, z: 0.0, heading: 0.0 };
 var keysDown = {};
 var walkSpeed = 1.5;         // units per second
 var turnSpeed = 360.0;       // degrees per second
 var walkLimit = 35.0;        // stay on the 80 x 80 ground
+var climbSpeed = 1.5;        // units per second while Space is held
+var sinkSpeed = 0.8;         // units per second gliding back down
+var maxHeight = 8.0;
 var pickingPass = false;
 var lastTime = 0;
 
@@ -354,7 +358,7 @@ function drawGround( eye, viewMatrix ) {
     // heading (root node); it gets bigger and lighter as the moth rises
     var p = position[rootId], h = radians( placement.heading );
     var yaw = h + radians( theta[rootId][1] );
-    var height = Math.max( 0, p[1] );
+    var height = Math.max( 0, p[1] + placement.y );
     var cx = placement.x + Math.cos( h ) * p[0] + Math.sin( h ) * p[2];
     var cz = placement.z - Math.sin( h ) * p[0] + Math.cos( h ) * p[2];
     gl.uniform2fv( groundLoc.shadowCenter, flatten( vec2( cx, cz ) ) );
@@ -410,7 +414,7 @@ function drawScene( picking ) {
     modelViewMatrix = lookAt( eye, vec3( at[0], at[1], at[2] ), vec3( up[0], up[1], up[2] ) );
     if ( !picking && groundTexture && numNodes && document.getElementById( "groundOn" ).checked )
         drawGround( eye, modelViewMatrix );
-    modelViewMatrix = mult( modelViewMatrix, translate( placement.x, 0.0, placement.z ) );
+    modelViewMatrix = mult( modelViewMatrix, translate( placement.x, placement.y, placement.z ) );
     modelViewMatrix = mult( modelViewMatrix, rotate( placement.heading, [ 0, 1, 0 ] ) );
     pickingPass = picking;
     traverse( rootId );
@@ -497,12 +501,15 @@ function setupMouse() {
 //
 //  Keyboard: W/A/S/D walk the moth forward / left / back / right as seen
 //  from the camera. The moth turns to face the way it is going, and the
-//  camera follows it.
+//  camera follows it. Holding Space flies it up; let go and it glides back
+//  down to the ground.
 //
 function setupKeyboard() {
-    var keys = { KeyW: 1, KeyA: 1, KeyS: 1, KeyD: 1 };
+    var keys = { KeyW: 1, KeyA: 1, KeyS: 1, KeyD: 1, Space: 1 };
     window.addEventListener( "keydown", function ( e ) {
         if ( !keys[e.code] || e.ctrlKey || e.metaKey || e.altKey ) return;
+        // don't steal Space from a focused button or checkbox
+        if ( e.code == "Space" && e.target != document.body ) e.target.blur();
         keysDown[e.code] = true;
         e.preventDefault();
     } );
@@ -511,6 +518,11 @@ function setupKeyboard() {
 }
 
 function moveMoth( dt ) {
+    var oldY = placement.y;
+    if ( keysDown.Space ) placement.y = Math.min( maxHeight, placement.y + climbSpeed * dt );
+    else placement.y = Math.max( 0.0, placement.y - sinkSpeed * dt );
+    at[1] += placement.y - oldY;
+
     var forward = ( keysDown.KeyW ? 1 : 0 ) - ( keysDown.KeyS ? 1 : 0 );
     var right   = ( keysDown.KeyD ? 1 : 0 ) - ( keysDown.KeyA ? 1 : 0 );
     if ( !forward && !right ) return;
@@ -634,8 +646,8 @@ function setupUI() {
     $( "resetButton" ).onclick = function () {
         stopPlaying();
         resetPose();
-        at[0] -= placement.x; at[2] -= placement.z;      // camera comes back with the moth
-        placement = { x: 0.0, z: 0.0, heading: 0.0 };
+        at[0] -= placement.x; at[1] -= placement.y; at[2] -= placement.z;   // camera comes back too
+        placement = { x: 0.0, y: 0.0, z: 0.0, heading: 0.0 };
         syncUI();
     };
     $( "limitsOn" ).onchange = function ( e ) { setJointLimitsOn( e.target.checked ); syncUI(); };

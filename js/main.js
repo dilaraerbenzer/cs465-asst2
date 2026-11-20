@@ -299,7 +299,7 @@ function drawSky( eye ) {
 //
 //  Ground: one big square (80 x 80 units) in the xz plane, drawn at the
 //  height of the moth's feet (groundY, found when the model is loaded).
-//  Texture from models/ground.jpg (tools/make_ground.py), repeated.
+//  Texture from models/ground.jpg, repeated.
 //
 function setupGround() {
 

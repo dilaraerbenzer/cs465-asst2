@@ -57,8 +57,7 @@ var skyFaces = [ "px", "nx", "py", "ny", "pz", "nz" ];
 var groundProgram, groundBuffer, groundTexture = null, groundLoc = {};
 
 var renderMode = 3;
-var selectedId = 0;
-var showSelection = false;   // no highlight until the user selects a part
+var selectedId = -1;         // -1 = no part selected
 var pickingPass = false;
 var lastTime = 0;
 
@@ -112,7 +111,6 @@ window.onload = function init() {
     ] ).then( function ( files ) {
         buildMoth( gl, files[1], loadOBJ( files[0] ), drawPart );
         loadTextures();
-        selectedId = rootId;
         setupUI();
         requestAnimationFrame( render );
     } ).catch( function ( e ) {
@@ -158,7 +156,7 @@ function drawPart( Id ) {
         if ( texturedMode && !partTexture[Id] ) mode = ( mode == 1 ) ? 0 : 2;
         gl.uniform1i( renderModeLoc, mode );
         gl.uniform4fv( materialColorLoc, flatten( partColor[Id] ) );
-        gl.uniform1f( selectedLoc, ( showSelection && Id == selectedId ) ? 1.0 : 0.0 );
+        gl.uniform1f( selectedLoc, ( Id == selectedId ) ? 1.0 : 0.0 );
         if ( mode == 1 || mode == 3 ) {
             gl.activeTexture( gl.TEXTURE0 );
             gl.bindTexture( gl.TEXTURE_2D, partTexture[Id] );
@@ -445,8 +443,8 @@ function setupMouse() {
         else {
             var r = canvas.getBoundingClientRect();
             var Id = pickPart( e.clientX - r.left, e.clientY - r.top );
-            if ( Id >= 0 ) { selectPart( Id ); drag = "part"; }
-            else drag = "orbit";
+            selectPart( Id );           // clicking empty space (-1) deselects
+            drag = ( Id >= 0 ) ? "part" : "orbit";
         }
         lastX = e.clientX; lastY = e.clientY;
         canvas.style.cursor = "grabbing";
@@ -456,7 +454,7 @@ function setupMouse() {
         if ( !drag ) return;
         var dx = e.clientX - lastX, dy = e.clientY - lastY;
         lastX = e.clientX; lastY = e.clientY;
-        if ( drag == "part" ) {
+        if ( drag == "part" && selectedId >= 0 ) {
             var t = theta[selectedId];
             if ( e.altKey ) t[2] = wrapAngle( t[2] + dx * 0.5 );
             else { t[1] = wrapAngle( t[1] + dx * 0.5 ); t[0] = wrapAngle( t[0] + dy * 0.5 ); }
@@ -498,20 +496,23 @@ function setSlider( id, value ) {
 }
 
 function syncUI() {
-    $( "selName" ).textContent = partName[selectedId];
-    $( "partSelect" ).value = selectedId;
-    var lim = jointLimitsOn ? jointLimits[selectedId] : null;
+    var none = selectedId < 0;
+    $( "selName" ).textContent = none ? "none" : partName[selectedId];
+    $( "partSelect" ).value = none ? "" : selectedId;
+    var lim = ( jointLimitsOn && !none ) ? jointLimits[selectedId] : null;
     for ( var k = 0; k < 3; ++k ) {
-        // the joint sliders only cover the selected part's allowed range
+        // the joint sliders only cover the selected part's allowed range,
+        // and are disabled while nothing is selected
+        $( jointSliders[k] ).disabled = none;
         $( jointSliders[k] ).min = lim ? lim[k][0] : -180;
         $( jointSliders[k] ).max = lim ? lim[k][1] : 180;
-        setSlider( jointSliders[k], theta[selectedId][k] );
+        setSlider( jointSliders[k], none ? 0 : theta[selectedId][k] );
         setSlider( globalPosSliders[k], position[rootId][k] );
         setSlider( globalRotSliders[k], theta[rootId][k] );
     }
 }
 
-function selectPart( Id ) { selectedId = Id; showSelection = true; syncUI(); }
+function selectPart( Id ) { selectedId = Id; syncUI(); }
 
 function renderFrameList() {
     var html = "";
@@ -559,6 +560,7 @@ function setupUI() {
     // Like the sliders of figure.html: change theta / position, then initNodes.
     jointSliders.forEach( function ( id, k ) {
         $( id ).oninput = function ( e ) {
+            if ( selectedId < 0 ) return;
             theta[selectedId][k] = +e.target.value; initNodes( selectedId ); syncUI();
         };
     } );

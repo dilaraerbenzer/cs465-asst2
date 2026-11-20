@@ -1,16 +1,10 @@
 //
 //  animation.js : keyframes, interpolation, preset animations, save/load.
 //
-//  Ported from Furkan's furkan.html (snap/apply/lerp/blend keyframe logic,
-//  play loop, save/load as JSON, walk and fly presets). Changes:
-//    - a keyframe is a pose from getPose() (moth.js): every part's theta and
-//      position, keyed by part NAME, so saved files keep working if parts are
-//      added or reordered
-//    - the global position/orientation is the root (thorax) node's
-//      position/theta instead of a separate array
-//    - the presets were rewritten for the moth's joints (tripod gait at the
-//      hips, with knees and feet folding while a leg is lifted; wings flap
-//      about the body axis) and a twerk preset was added
+//  A keyframe is a pose from getPose() (moth.js): every part's theta and
+//  position, keyed by part NAME, so saved files keep working if parts are
+//  added or reordered. The global position/orientation is the root (thorax)
+//  node's position/theta. Playback blends neighbouring keyframes linearly.
 //
 
 "use strict";

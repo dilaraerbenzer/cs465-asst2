@@ -2,8 +2,8 @@
 
 ## Current model: Tripo, segmented
 
-`models/moth_tripo.obj` is the source model (generated with Tripo and
-segmented into 13 parts). `tools/rig_from_tripo.py` converts it into the files
+`models/source/moth.obj` is the source model (generated with Tripo and
+segmented in Blender). `tools/rig_moth.py` converts it into the files
 the app loads (`models/moth.obj` + `models/moth.rig.json`):
 
 * renames the parts (`tripo_part_4` -> `thorax`, ...; the table is `PARTS`
@@ -26,10 +26,10 @@ thorax
 
 Each wing still has its fore- and hindwing fused. To split off another part,
 do it in Blender (Edit mode, X-ray, box-select, P -> Selection), export again
-as `models/moth_tripo.obj`, add the new part to `PARTS` and re-run:
+as `models/source/moth.obj`, add the new part to `PARTS` and re-run:
 
 ```bash
-python3 tools/rig_from_tripo.py
+python3 tools/rig_moth.py
 ```
 
 The rest of this file is the older from-scratch Blender workflow
@@ -43,9 +43,6 @@ The app loads two files:
 |---|---|
 | `models/moth.obj` | the geometry, one `o <name>` block per movable part |
 | `models/moth.rig.json` | each part's parent, pivot (joint position) and colour |
-
-`tools/make_placeholder_moth.py` writes a primitive placeholder moth in the
-same format, which is handy for testing the app without a real model.
 
 ## Rules for the .blend file
 

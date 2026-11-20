@@ -1,6 +1,6 @@
 # Blender 5.3.0
 # www.blender.org
-mtllib moth_tripo.mtl
+mtllib moth.mtl
 o tripo_part_0
 v -0.083229 0.260325 0.062715
 v -0.082938 0.256896 0.062972

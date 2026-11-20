@@ -102,7 +102,7 @@ function setJointLimitsOn( on ) {
 //  Joint frames. Knees and feet do not bend about a model axis (the legs
 //  point in different directions), so moth.rig.json gives them "axes": the
 //  joint's own x (hinge), y (along the segment) and z directions, computed by
-//  tools/rig_from_tripo.py. The rotations are applied in that frame:
+//  tools/rig_moth.py. The rotations are applied in that frame:
 //      A * Rz * Ry * Rx * A^-1      (A = matrix with the axes as columns)
 //  so theta x always bends the joint. Other parts use the model axes.
 //

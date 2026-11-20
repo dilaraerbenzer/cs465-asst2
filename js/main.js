@@ -6,7 +6,7 @@
 //  phi + lookAt) follow Angel & Shreiner: Chapter 6 shadedSphere4.js,
 //  Chapter 7 textureCube1.js and Chapter 9 figure.js.
 //
-//  Ported from Furkan's furkan.html, adapted to this structure:
+//  On top of that:
 //    - the four render modes (colour / unlit texture / smooth shading /
 //      shaded texture) and the selected-part highlight
 //    - picking by drawing every part in its own id colour and reading the

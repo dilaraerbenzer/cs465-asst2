@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Turns the segmented Tripo model (models/moth_tripo.obj, exported from
+Turns the segmented Tripo model (models/source/moth.obj, exported from
 Blender) into the files the app loads:
     models/moth.obj        parts renamed, moth turned to face +Z, scaled, centred
     models/moth.rig.json   parent, pivot (joint), joint axes, colour and texture
@@ -20,7 +20,7 @@ What it does, in order:
      joint for every leg), y = along the segment, z = x cross y.
 
 After splitting/renaming parts in Blender, update PARTS below and run:
-    python3 tools/rig_from_tripo.py
+    python3 tools/rig_moth.py
 """
 import json
 import os
@@ -28,7 +28,7 @@ import os
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "models", "moth_tripo.obj")
+SRC = os.path.join(ROOT, "models", "source", "moth.obj")
 OUT_OBJ = os.path.join(ROOT, "models", "moth.obj")
 OUT_RIG = os.path.join(ROOT, "models", "moth.rig.json")
 
@@ -41,7 +41,7 @@ VELVET = [0.16, 0.08, 0.18]
 # Several object names separated by "|" are alternatives (whichever is in the
 # file is used). Parents must come first. Optional parts (lower legs, feet,
 # abdomen tip) that are missing from the file are skipped.
-# In moth_tripo.obj the head points to -X, up is +Y and the moth's left is +Z.
+# In the source OBJ the head points to -X, up is +Y and the moth's left is +Z.
 # Legs: the upper part keeps the leg's name (leg_front_R ...); the lower leg
 # is leg_<pos>_lower_<side>, the foot leg_<pos>_foot_<side>.
 LEGS = [  # position, side, tripo number, extra names used in the Blender file
@@ -263,8 +263,7 @@ def main():
 
     name_of = {src: name for src, name, *_ in parts}
     with open(OUT_OBJ, "w") as f:
-        f.write("# Generated from models/moth_tripo.obj by tools/rig_from_tripo.py\n")
-        f.write("mtllib moth_tripo.mtl\n")
+        f.write("# Generated from models/source/moth.obj by tools/rig_moth.py\n")
         for v in V:
             f.write("v %.5f %.5f %.5f\n" % tuple(v))
         for t in VT:

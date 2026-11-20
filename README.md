@@ -22,15 +22,13 @@ Then open http://localhost:8000.
 | `js/moth.js` | hierarchy: `figure[]`, `createNode`, `initNodes`, `traverse` (from `figure.js`), get/set pose |
 | `js/main.js` | `init()` / `render()`, render modes, textures, picking, mouse, UI panel |
 | `js/animation.js` | keyframes, interpolation, walk/fly presets, save/load |
-| `models/moth_tripo.obj` | source model (Tripo, segmented into 13 parts) |
+| `models/moth.obj`, `models/moth.rig.json` | the model the app loads (26 parts), made by `tools/rig_moth.py` |
+| `models/source/moth.obj` | source model exported from Blender (Tripo, segmented) |
 | `models/textures/` | one base-colour texture per Tripo part |
 | `models/skybox/` | six cube-map faces of the night-sky background |
 | `tools/make_skybox.py` | generates the skybox images (replace them to use your own) |
-| `models/moth.obj`, `models/moth.rig.json` | the model the app loads, made by `tools/rig_from_tripo.py` |
-| `tools/rig_from_tripo.py` | renames/turns the Tripo parts and finds the joints |
-| `furkan.html` | Furkan's original standalone prototype with a primitive bug model (its features were ported into `js/`; open it directly, no server needed) |
-| `tools/blender_export_rig.py` | Blender script that exports the real model + rig |
-| `tools/make_placeholder_moth.py` | generates a primitive placeholder model (for testing) |
+| `tools/rig_moth.py` | renames/turns the source parts, finds the joints, writes `moth.obj` + `moth.rig.json` |
+| `tools/blender_export_rig.py` | Blender script for the older from-scratch export workflow |
 | `docs/MODELING.md` | how to build and export the moth in Blender |
 
 Code reused from the book is marked at the top of each file, with what we changed.

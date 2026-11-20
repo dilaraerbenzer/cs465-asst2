@@ -418,7 +418,11 @@ function setSlider( id, value ) {
 function syncUI() {
     $( "selName" ).textContent = partName[selectedId];
     $( "partSelect" ).value = selectedId;
+    var lim = jointLimitsOn ? jointLimits[selectedId] : null;
     for ( var k = 0; k < 3; ++k ) {
+        // the joint sliders only cover the selected part's allowed range
+        $( jointSliders[k] ).min = lim ? lim[k][0] : -180;
+        $( jointSliders[k] ).max = lim ? lim[k][1] : 180;
         setSlider( jointSliders[k], theta[selectedId][k] );
         setSlider( globalPosSliders[k], position[rootId][k] );
         setSlider( globalRotSliders[k], theta[rootId][k] );
@@ -480,6 +484,7 @@ function setupUI() {
         };
     } );
     $( "resetButton" ).onclick = function () { stopPlaying(); resetPose(); syncUI(); };
+    $( "limitsOn" ).onchange = function ( e ) { setJointLimitsOn( e.target.checked ); syncUI(); };
 
     // Keyframes
     $( "frameList" ).onclick = function ( e ) {

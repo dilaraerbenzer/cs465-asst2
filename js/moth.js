@@ -43,6 +43,54 @@ var partTexture = [];     // Id -> WebGL texture once the image has loaded
 var theta = [];           // Id -> vec3, joint angles in degrees   (sliders / keyframes)
 var position = [];        // Id -> vec3, extra translation          (global position of root)
 
+//
+//  Joint limits (realistic range of motion), in degrees, [min, max] for the
+//  rotation about x, y and z. Written for the LEFT side; for "_R" parts the
+//  y and z ranges are mirrored, because the right side is a mirror image.
+//  Axes (model space): +z = head direction, +y = up, +x = moth's left.
+//    head      x: nod (+ = down)   y: turn left/right       z: tilt
+//    antenna   x: lower/raise      y: spread in/out         z: twist
+//    abdomen   x: curl (+ = up)    y: sway sideways         z: twist
+//    wing      x: twist            y: sweep forward/back    z: flap (+ = up)
+//    leg (hip) x: twist            y: swing (- = forward)   z: lift (+ = up)
+//  The root (thorax) is the global orientation and is not limited.
+//  A part can also get its own "limits" in moth.rig.json.
+//
+var jointLimitTable = [
+    // name prefix, [ [xmin, xmax], [ymin, ymax], [zmin, zmax] ]
+    [ "head",     [ [ -20, 30 ], [ -35, 35 ], [ -15, 15 ] ] ],
+    [ "antenna",  [ [ -35, 35 ], [ -25, 30 ], [ -15, 15 ] ] ],
+    [ "abdomen",  [ [ -25, 25 ], [ -20, 20 ], [ -10, 10 ] ] ],
+    [ "wing",     [ [ -20, 20 ], [ -30, 20 ], [ -30, 70 ] ] ],
+    [ "leg",      [ [ -15, 15 ], [ -40, 40 ], [ -20, 40 ] ] ],
+];
+var defaultLimits = [ [ -45, 45 ], [ -45, 45 ], [ -45, 45 ] ];
+var jointLimits = [];       // Id -> limits, or null (no limits)
+var jointLimitsOn = true;
+
+function limitsFor( name ) {
+    var lim = defaultLimits;
+    for ( var i = 0; i < jointLimitTable.length; ++i )
+        if ( name.indexOf( jointLimitTable[i][0] ) == 0 ) { lim = jointLimitTable[i][1]; break; }
+    if ( name.slice( -2 ) == "_R" )      // mirror y and z for the right side
+        lim = [ lim[0], [ -lim[1][1], -lim[1][0] ], [ -lim[2][1], -lim[2][0] ] ];
+    return lim;
+}
+
+// Keep theta[Id] inside its limits (called by initNodes, so sliders, mouse
+// dragging, presets, keyframe playback and loaded files are all limited).
+function clampJoint( Id ) {
+    var lim = jointLimits[Id];
+    if ( !jointLimitsOn || !lim ) return;
+    for ( var k = 0; k < 3; ++k )
+        theta[Id][k] = Math.max( lim[k][0], Math.min( lim[k][1], theta[Id][k] ) );
+}
+
+function setJointLimitsOn( on ) {
+    jointLimitsOn = on;
+    for ( var Id = 0; Id < numNodes; ++Id ) initNodes( Id );
+}
+
 var stack = [];
 var modelViewMatrix;
 
@@ -62,6 +110,7 @@ function createNode( transform, render, sibling, child ) {
 
 function initNodes( Id ) {
 
+    clampJoint( Id );
     var m = translate( offset[Id][0] + position[Id][0],
                        offset[Id][1] + position[Id][1],
                        offset[Id][2] + position[Id][2] );
@@ -102,6 +151,7 @@ function buildMoth( gl, rig, objParts, drawPart ) {
         partColor[Id] = vec4( c[0], c[1], c[2], 1.0 );
         partTextureFile[Id] = p.texture || null;
         partTexture[Id] = null;
+        jointLimits[Id] = p.limits || ( p.parent == null ? null : limitsFor( p.name ) );
         theta[Id] = vec3( 0, 0, 0 );
         position[Id] = vec3( 0, 0, 0 );
     }

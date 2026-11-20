@@ -43,7 +43,9 @@ Code reused from the book is marked at the top of each file, with what we change
   every joint, play/loop, frame time, presets (walk, fly, twerk), save/load JSON.
 * **Part 4, posture and camera:** click a part to select it, drag it to rotate
   its joint (Alt+drag: z axis), joint sliders, global position/orientation
-  sliders; orbit (drag), pan (right-drag or Shift+drag), zoom (wheel).
+  sliders; orbit (drag), pan (right-drag or Shift+drag), zoom (wheel);
+  W/A/S/D walk the moth around the ground relative to the camera (it turns
+  to face where it is going and the camera follows).
 * **Joint limits:** each joint has a realistic range of motion (table in
   `js/moth.js`), enforced for sliders, dragging, presets and loaded files;
   a checkbox turns them off.

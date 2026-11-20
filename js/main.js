@@ -58,6 +58,15 @@ var groundProgram, groundBuffer, groundTexture = null, groundLoc = {};
 
 var renderMode = 3;
 var selectedId = -1;         // -1 = no part selected
+
+// Where WASD has walked the moth to on the ground: a position in the xz
+// plane and a heading (degrees about y, 0 = facing +z). It is applied on top
+// of the pose, so presets and keyframes still play while the moth is moving.
+var placement = { x: 0.0, z: 0.0, heading: 0.0 };
+var keysDown = {};
+var walkSpeed = 1.5;         // units per second
+var turnSpeed = 360.0;       // degrees per second
+var walkLimit = 35.0;        // stay on the 80 x 80 ground
 var pickingPass = false;
 var lastTime = 0;
 
@@ -101,6 +110,7 @@ window.onload = function init() {
     setupSkybox();
     setupGround();
     setupMouse();
+    setupKeyboard();
 
     //
     //  Load the model (fetch needs the page to be served over http)
@@ -340,11 +350,14 @@ function drawGround( eye, viewMatrix ) {
     gl.uniform1f( groundLoc.useSky, sky ? 1.0 : 0.0 );
     gl.uniform3fv( groundLoc.fogColor, flatten( vec3( 0.44, 0.49, 0.40 ) ) );
 
-    // shadow follows the moth's global position and heading (root node);
-    // it gets bigger and lighter as the moth rises
-    var p = position[rootId], yaw = radians( theta[rootId][1] );
+    // shadow follows the moth's placement plus its global position and
+    // heading (root node); it gets bigger and lighter as the moth rises
+    var p = position[rootId], h = radians( placement.heading );
+    var yaw = h + radians( theta[rootId][1] );
     var height = Math.max( 0, p[1] );
-    gl.uniform2fv( groundLoc.shadowCenter, flatten( vec2( p[0], p[2] ) ) );
+    var cx = placement.x + Math.cos( h ) * p[0] + Math.sin( h ) * p[2];
+    var cz = placement.z - Math.sin( h ) * p[0] + Math.cos( h ) * p[2];
+    gl.uniform2fv( groundLoc.shadowCenter, flatten( vec2( cx, cz ) ) );
     gl.uniform2fv( groundLoc.shadowDir, flatten( vec2( Math.sin( yaw ), Math.cos( yaw ) ) ) );
     gl.uniform1f( groundLoc.shadowSize, 1.0 + 0.6 * height );
     gl.uniform1f( groundLoc.shadowStrength, 0.6 / ( 1.0 + 1.5 * height ) );
@@ -397,6 +410,8 @@ function drawScene( picking ) {
     modelViewMatrix = lookAt( eye, vec3( at[0], at[1], at[2] ), vec3( up[0], up[1], up[2] ) );
     if ( !picking && groundTexture && numNodes && document.getElementById( "groundOn" ).checked )
         drawGround( eye, modelViewMatrix );
+    modelViewMatrix = mult( modelViewMatrix, translate( placement.x, 0.0, placement.z ) );
+    modelViewMatrix = mult( modelViewMatrix, rotate( placement.heading, [ 0, 1, 0 ] ) );
     pickingPass = picking;
     traverse( rootId );
     pickingPass = false;
@@ -406,6 +421,7 @@ var render = function( now ) {
 
     var dt = Math.min( ( now - lastTime ) / 1000.0, 0.1 );
     lastTime = now;
+    moveMoth( dt );
     if ( stepAnimation( dt, +document.getElementById( "frameTime" ).value,
                         document.getElementById( "loop" ).checked ) ) {
         syncUI();
@@ -476,6 +492,47 @@ function setupMouse() {
         e.preventDefault();
         radius = Math.max( 0.5, Math.min( 30, radius * Math.exp( e.deltaY * 0.001 ) ) );
     }, { passive: false } );
+}
+
+//
+//  Keyboard: W/A/S/D walk the moth forward / left / back / right as seen
+//  from the camera. The moth turns to face the way it is going, and the
+//  camera follows it.
+//
+function setupKeyboard() {
+    var keys = { KeyW: 1, KeyA: 1, KeyS: 1, KeyD: 1 };
+    window.addEventListener( "keydown", function ( e ) {
+        if ( !keys[e.code] || e.ctrlKey || e.metaKey || e.altKey ) return;
+        keysDown[e.code] = true;
+        e.preventDefault();
+    } );
+    window.addEventListener( "keyup", function ( e ) { delete keysDown[e.code]; } );
+    window.addEventListener( "blur", function () { keysDown = {}; } );
+}
+
+function moveMoth( dt ) {
+    var forward = ( keysDown.KeyW ? 1 : 0 ) - ( keysDown.KeyS ? 1 : 0 );
+    var right   = ( keysDown.KeyD ? 1 : 0 ) - ( keysDown.KeyA ? 1 : 0 );
+    if ( !forward && !right ) return;
+
+    // camera's forward and right directions on the ground
+    var t = radians( camTheta );
+    var dx = -Math.sin( t ) * forward + Math.cos( t ) * right;
+    var dz = -Math.cos( t ) * forward - Math.sin( t ) * right;
+    var len = Math.hypot( dx, dz );
+    dx /= len; dz /= len;
+
+    var oldX = placement.x, oldZ = placement.z;
+    placement.x = Math.max( -walkLimit, Math.min( walkLimit, placement.x + dx * walkSpeed * dt ) );
+    placement.z = Math.max( -walkLimit, Math.min( walkLimit, placement.z + dz * walkSpeed * dt ) );
+    at[0] += placement.x - oldX;
+    at[2] += placement.z - oldZ;
+
+    // turn toward the direction of travel, the short way round
+    var target = Math.atan2( dx, dz ) * 180 / Math.PI;
+    var diff = wrapAngle( target - placement.heading );
+    var step = turnSpeed * dt;
+    placement.heading = wrapAngle( placement.heading + Math.max( -step, Math.min( step, diff ) ) );
 }
 
 function wrapAngle( a ) { return ( ( a + 180 ) % 360 + 360 ) % 360 - 180; }
@@ -574,7 +631,13 @@ function setupUI() {
             theta[rootId][k] = +e.target.value; initNodes( rootId ); syncUI();
         };
     } );
-    $( "resetButton" ).onclick = function () { stopPlaying(); resetPose(); syncUI(); };
+    $( "resetButton" ).onclick = function () {
+        stopPlaying();
+        resetPose();
+        at[0] -= placement.x; at[2] -= placement.z;      // camera comes back with the moth
+        placement = { x: 0.0, z: 0.0, heading: 0.0 };
+        syncUI();
+    };
     $( "limitsOn" ).onchange = function ( e ) { setJointLimitsOn( e.target.checked ); syncUI(); };
 
     // Keyframes

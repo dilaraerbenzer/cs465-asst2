@@ -456,15 +456,22 @@ function setupUI() {
 
     $( "renderMode" ).onchange = function ( e ) { renderMode = +e.target.value; };
 
+    // Part list drawn as the hierarchy tree: walk figure[] with the same
+    // child / sibling links that traverse() uses, so every part is listed
+    // under its parent (e.g. head > antennae, leg > lower leg > foot).
     var select = $( "partSelect" );
-    for ( var Id = 0; Id < numNodes; ++Id ) {
-        var depth = 0;
-        for ( var p = parentId[Id]; p != null; p = parentId[p] ) depth++;
+    function addTreeRows( Id, prefix, isLast, isRoot ) {
+        if ( Id == null ) return;
         var option = document.createElement( "option" );
         option.value = Id;
-        option.textContent = "  ".repeat( depth ) + partName[Id];
+        option.textContent = isRoot ? partName[Id]
+                                    : prefix + ( isLast ? "\u2514\u2500 " : "\u251c\u2500 " ) + partName[Id];
         select.appendChild( option );
+        var childPrefix = isRoot ? "" : prefix + ( isLast ? "\u00a0\u00a0\u00a0" : "\u2502\u00a0\u00a0" );
+        for ( var c = figure[Id].child; c != null; c = figure[c].sibling )
+            addTreeRows( c, childPrefix, figure[c].sibling == null, false );
     }
+    addTreeRows( rootId, "", true, true );
     select.onchange = function ( e ) { selectPart( +e.target.value ); };
 
     // Like the sliders of figure.html: change theta / position, then initNodes.

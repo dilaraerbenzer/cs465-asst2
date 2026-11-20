@@ -150,6 +150,7 @@ void main()
   #panel label { display: grid; grid-template-columns: 70px 1fr 38px; align-items: center; gap: 4px; margin: 2px 0; }
   #panel output { text-align: right; color: #9a93a8; }
   #panel select { width: 100%; }
+  #partSelect { font-family: monospace; font-size: 12px; }
   #panel button { margin: 2px 2px 2px 0; }
   #frameList { display: flex; flex-wrap: wrap; gap: 3px; margin: 4px 0; padding: 0; list-style: none; }
   #frameList li { padding: 1px 7px; border: 1px solid #4a4452; border-radius: 3px; cursor: pointer; }
@@ -175,7 +176,7 @@ Oops ... your browser doesn't support the HTML5 canvas element
   <div><input id="skyboxOn" type="checkbox" checked> night-sky background (skybox)</div>
 
   <h3>Selected part: <span id="selName">thorax</span></h3>
-  <select id="partSelect" size="7"></select>
+  <select id="partSelect" size="14"></select>
   <label>Rotate X <input id="jointX" type="range" min="-180" max="180" step="1"><output></output></label>
   <label>Rotate Y <input id="jointY" type="range" min="-180" max="180" step="1"><output></output></label>
   <label>Rotate Z <input id="jointZ" type="range" min="-180" max="180" step="1"><output></output></label>

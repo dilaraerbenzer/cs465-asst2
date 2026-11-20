@@ -1,6 +1,6 @@
 # Goth Moth
 
-CS465/575 Assignment 2: a hierarchical moth model in plain WebGL (no three.js).
+CS465 Programming Assignment 2: a hierarchical moth model in plain WebGL
 
 ## Running it
 

@@ -1,258 +1,944 @@
 <!DOCTYPE html>
-<html lang="tr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Böcek Animatörü - CS465 Ödev 2</title>
+
+<!--
+  Furkan's first standalone prototype: a primitive bee/moth made of spheres,
+  cylinders and boxes, with its own small matrix helpers (no MV.js).
+  The real app is index.html + js/; the ideas from this file (render modes,
+  picking, dragging parts, keyframes, presets) were ported over there.
+-->
+
 <style>
-:root{--bg:#eef0ea;--pn:#fbfbf8;--fg:#1f2a24;--bd:#c9cfc4;--ac:#2f6f4f;--mu:#68746d}
-@media(prefers-color-scheme:dark){:root{--bg:#171c19;--pn:#1f2622;--fg:#e4eae6;--bd:#34403a;--ac:#6fcf97;--mu:#8e9b94}}
-*{box-sizing:border-box}html,body{height:100%;margin:0}
-body{display:flex;background:var(--bg);color:var(--fg);font:13px/1.4 system-ui,sans-serif}
-#ui{width:310px;overflow-y:auto;padding:12px;background:var(--pn);border-right:1px solid var(--bd)}
-#cv{flex:1;min-width:0;height:100%;display:block;cursor:grab}
-h1{font-size:17px;margin:0 0 8px}h2{font-size:13px;margin:14px 0 6px;padding-top:10px;border-top:1px solid var(--bd)}
-label{display:grid;grid-template-columns:62px 1fr 34px;align-items:center;gap:4px;margin:2px 0}
-output{text-align:right;color:var(--mu)}input[type=range]{width:100%}
-select,button,input[type=file]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:4px 7px;margin:2px 2px 2px 0}
-button{cursor:pointer}button:hover{border-color:var(--ac)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac)}
-button.p{background:var(--ac);color:var(--pn);border-color:var(--ac)}
-small{color:var(--mu);display:block;margin:3px 0}
-ol{margin:4px 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:3px}
-ol li{padding:2px 8px;border:1px solid var(--bd);border-radius:4px;cursor:pointer}ol li.on{background:var(--ac);color:var(--pn);border-color:var(--ac)}
-@media(max-width:700px){body{flex-direction:column-reverse}#ui{width:100%;height:45%}}
-</style></head><body>
-<div id="ui">
-<h1>Böcek Animatörü</h1>
-<small>Parçaya tıkla = seç. Sürükle = X/Y döndür, Alt+sürükle = Z. Boşlukta sürükle = kamera döndür, sağ tuş / orta tuş = kaydır, tekerlek = yakınlaştır.</small>
-<h2>Görünüm (Bölüm 2)</h2>
-<select id="mode"><option value="0">Renk</option><option value="1">Doku (ışıksız)</option><option value="2" selected>Yumuşak gölgeleme</option><option value="3">Gölgeli doku</option></select>
-<label style="grid-template-columns:1fr"><span>Doku resmi yükle</span><input type="file" id="texFile" accept="image/*"></label>
-<label style="grid-template-columns:1fr"><span>Seçili parçaya OBJ yükle</span><input type="file" id="objFile" accept=".obj"></label>
-<h2>Seçili parça: <span id="selName">yok</span></h2><div id="jsl"></div>
-<h2>Genel konum ve yön</h2><div id="gsl"></div>
-<h2>Animasyon (Bölüm 3)</h2>
-<button id="addK" class="p">Kare ekle</button><button id="updK">Kareyi güncelle</button><button id="delK">Sil</button><button id="clrK">Temizle</button>
-<ol id="kl"></ol>
-<label><span>Kare süresi</span><input type="range" id="dur" min="0.03" max="1.5" step="0.01" value="0.25"><output id="durO">0.25</output></label>
-<button id="play" class="p">Oynat</button><label style="display:inline"><input type="checkbox" id="loop" checked> döngü</label>
-<div><button id="preWalk">Hazır: Yürüme</button><button id="preFly">Hazır: Kanat çırpma</button></div>
-<div><button id="save">Kaydet (.json)</button><input type="file" id="load" accept=".json"></div>
+  :root {
+    --bg: #eef0ea;
+    --panel: #fbfbf8;
+    --fg: #1f2a24;
+    --border: #c9cfc4;
+    --accent: #2f6f4f;
+    --muted: #68746d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171c19;
+      --panel: #1f2622;
+      --fg: #e4eae6;
+      --border: #34403a;
+      --accent: #6fcf97;
+      --muted: #8e9b94;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+
+  #panel { width: 310px; overflow-y: auto; padding: 12px; background: var(--panel); border-right: 1px solid var(--border); }
+  #canvas { flex: 1; min-width: 0; height: 100%; display: block; cursor: grab; }
+
+  h1 { font-size: 17px; margin: 0 0 8px; }
+  h2 { font-size: 13px; margin: 14px 0 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+  label { display: grid; grid-template-columns: 62px 1fr 34px; align-items: center; gap: 4px; margin: 2px 0; }
+  label.wide { grid-template-columns: 1fr; }
+  label.inline { display: inline; }
+  output { text-align: right; color: var(--muted); }
+  input[type=range] { width: 100%; }
+
+  select, button, input[type=file] {
+    font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 7px; margin: 2px 2px 2px 0;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); }
+  button.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+
+  small { color: var(--muted); display: block; margin: 3px 0; }
+
+  #frameList { margin: 4px 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 3px; }
+  #frameList li { padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  #frameList li.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+
+  @media (max-width: 700px) {
+    body { flex-direction: column-reverse; }
+    #panel { width: 100%; height: 45%; }
+  }
+</style>
+</head>
+
+<body>
+<div id="panel">
+  <h1>Böcek Animatörü</h1>
+  <small>Parçaya tıkla = seç. Sürükle = X/Y döndür, Alt+sürükle = Z.
+    Boşlukta sürükle = kamera döndür, sağ tuş / orta tuş = kaydır, tekerlek = yakınlaştır.</small>
+
+  <h2>Görünüm (Bölüm 2)</h2>
+  <select id="renderMode">
+    <option value="0">Renk</option>
+    <option value="1">Doku (ışıksız)</option>
+    <option value="2" selected>Yumuşak gölgeleme</option>
+    <option value="3">Gölgeli doku</option>
+  </select>
+  <label class="wide"><span>Doku resmi yükle</span><input type="file" id="textureFile" accept="image/*"></label>
+  <label class="wide"><span>Seçili parçaya OBJ yükle</span><input type="file" id="objFile" accept=".obj"></label>
+
+  <h2>Seçili parça: <span id="selectedName">yok</span></h2>
+  <div id="jointSliders"></div>
+
+  <h2>Genel konum ve yön</h2>
+  <div id="globalSliders"></div>
+
+  <h2>Animasyon (Bölüm 3)</h2>
+  <button id="addFrame" class="primary">Kare ekle</button>
+  <button id="updateFrame">Kareyi güncelle</button>
+  <button id="deleteFrame">Sil</button>
+  <button id="clearFrames">Temizle</button>
+  <ol id="frameList"></ol>
+  <label><span>Kare süresi</span>
+    <input type="range" id="frameTime" min="0.03" max="1.5" step="0.01" value="0.25"><output id="frameTimeOut">0.25</output></label>
+  <button id="playButton" class="primary">Oynat</button>
+  <label class="inline"><input type="checkbox" id="loop" checked> döngü</label>
+  <div>
+    <button id="presetWalk">Hazır: Yürüme</button>
+    <button id="presetFly">Hazır: Kanat çırpma</button>
+  </div>
+  <div>
+    <button id="saveButton">Kaydet (.json)</button>
+    <input type="file" id="loadFile" accept=".json">
+  </div>
 </div>
-<canvas id="cv"></canvas>
+
+<canvas id="canvas"></canvas>
+
 <script>
 "use strict";
-/* ---------- Matris yardımcıları (sütun öncelikli, gl-matrix kullanılmadı) ---------- */
-const m4={
- id:()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]),
- mul(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o},
- T(x,y,z){const m=m4.id();m[12]=x;m[13]=y;m[14]=z;return m},
- S(x,y,z){const m=m4.id();m[0]=x;m[5]=y;m[10]=z;return m},
- Rx(d){const m=m4.id(),c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);m[5]=c;m[6]=s;m[9]=-s;m[10]=c;return m},
- Ry(d){const m=m4.id(),c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);m[0]=c;m[2]=-s;m[8]=s;m[10]=c;return m},
- Rz(d){const m=m4.id(),c=Math.cos(d*Math.PI/180),s=Math.sin(d*Math.PI/180);m[0]=c;m[1]=s;m[4]=-s;m[5]=c;return m},
- persp(fy,a,n,f){const t=1/Math.tan(fy/2),m=new Float32Array(16);m[0]=t/a;m[5]=t;m[10]=(f+n)/(n-f);m[11]=-1;m[14]=2*f*n/(n-f);return m}
-};
-const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
-function normalMat(m){ // ters devrik 3x3 (yön yeterli, shader normalize eder)
- const a=[m[0],m[1],m[2]],b=[m[4],m[5],m[6]],c=[m[8],m[9],m[10]];
- return new Float32Array([...cross(b,c),...cross(c,a),...cross(a,b)]);
+
+function $(id) { return document.getElementById(id); }
+
+// ---------------------------------------------------------------------------
+// Matrix helpers. Column-major Float32Arrays, the layout WebGL expects.
+// Angles are in degrees.
+// ---------------------------------------------------------------------------
+
+function identity() {
+  return new Float32Array([1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1]);
 }
 
-/* ---------- WebGL ---------- */
-const cv=document.getElementById('cv'),gl=cv.getContext('webgl',{antialias:true});
-const VS=`attribute vec3 aP,aN;attribute vec2 aT;uniform mat4 uMV,uP;uniform mat3 uNm;
-varying vec3 vN,vE;varying vec2 vT;
-void main(){vec4 e=uMV*vec4(aP,1.);vE=e.xyz;vN=uNm*aN;vT=aT;gl_Position=uP*e;}`;
-const FS=`precision mediump float;varying vec3 vN,vE;varying vec2 vT;
-uniform int uMode;uniform vec3 uCol;uniform sampler2D uTex;uniform float uSel;
-void main(){
- if(uMode==4){gl_FragColor=vec4(uCol,1.);return;}          // seçim (picking) geçişi
- vec3 base=uCol;if(uMode==1||uMode==3)base=texture2D(uTex,vT).rgb;
- vec3 c=base;
- if(uMode>=2){vec3 n=normalize(vN),V=normalize(-vE),L=normalize(vec3(.4,.8,.6));
-  if(dot(n,V)<0.)n=-n;vec3 H=normalize(L+V);                // Blinn-Phong, ışık kamerayla birlikte
-  c=base*(.28+.72*max(dot(n,L),0.))+vec3(.22)*pow(max(dot(n,H),0.),32.);}
- gl_FragColor=vec4(mix(c,vec3(1.,.4,.2),uSel*.4),1.);}`;
-function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o}
-const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));
-['aP','aN','aT'].forEach((n,i)=>gl.bindAttribLocation(pr,i,n));gl.linkProgram(pr);gl.useProgram(pr);
-const U=n=>gl.getUniformLocation(pr,n);
-const uMV=U('uMV'),uP=U('uP'),uNm=U('uNm'),uMode=U('uMode'),uCol=U('uCol'),uSel=U('uSel');
+function multiply(a, b) {
+  const out = new Float32Array(16);
+  for (let col = 0; col < 4; col++) {
+    for (let row = 0; row < 4; row++) {
+      let sum = 0;
+      for (let k = 0; k < 4; k++) sum += a[k * 4 + row] * b[col * 4 + k];
+      out[col * 4 + row] = sum;
+    }
+  }
+  return out;
+}
+
+// multiplyAll(A, B, C) = A * B * C
+function multiplyAll(...matrices) {
+  return matrices.reduce(multiply);
+}
+
+function translate(x, y, z) {
+  const m = identity();
+  m[12] = x; m[13] = y; m[14] = z;
+  return m;
+}
+
+function scale(x, y, z) {
+  const m = identity();
+  m[0] = x; m[5] = y; m[10] = z;
+  return m;
+}
+
+function rotateX(deg) {
+  const m = identity(), c = Math.cos(deg * Math.PI / 180), s = Math.sin(deg * Math.PI / 180);
+  m[5] = c; m[6] = s; m[9] = -s; m[10] = c;
+  return m;
+}
+
+function rotateY(deg) {
+  const m = identity(), c = Math.cos(deg * Math.PI / 180), s = Math.sin(deg * Math.PI / 180);
+  m[0] = c; m[2] = -s; m[8] = s; m[10] = c;
+  return m;
+}
+
+function rotateZ(deg) {
+  const m = identity(), c = Math.cos(deg * Math.PI / 180), s = Math.sin(deg * Math.PI / 180);
+  m[0] = c; m[1] = s; m[4] = -s; m[5] = c;
+  return m;
+}
+
+function perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), m = new Float32Array(16);
+  m[0] = f / aspect;
+  m[5] = f;
+  m[10] = (far + near) / (near - far);
+  m[11] = -1;
+  m[14] = 2 * far * near / (near - far);
+  return m;
+}
+
+function cross(a, b) {
+  return [a[1] * b[2] - a[2] * b[1],
+          a[2] * b[0] - a[0] * b[2],
+          a[0] * b[1] - a[1] * b[0]];
+}
+
+// Inverse transpose of the upper 3x3, up to a scale factor (the columns of the
+// cofactor matrix). The scale doesn't matter: the shader normalizes the normal.
+function normalMatrix(m) {
+  const a = [m[0], m[1], m[2]], b = [m[4], m[5], m[6]], c = [m[8], m[9], m[10]];
+  return new Float32Array([...cross(b, c), ...cross(c, a), ...cross(a, b)]);
+}
+
+// ---------------------------------------------------------------------------
+// WebGL setup and shaders
+// ---------------------------------------------------------------------------
+
+const canvas = $("canvas");
+const gl = canvas.getContext("webgl", { antialias: true });
+
+const vertexShaderSource = `
+attribute vec3 aPosition;
+attribute vec3 aNormal;
+attribute vec2 aTexCoord;
+uniform mat4 uModelView;
+uniform mat4 uProjection;
+uniform mat3 uNormalMatrix;
+varying vec3 vNormal;
+varying vec3 vEyePos;
+varying vec2 vTexCoord;
+
+void main() {
+  vec4 eyePos = uModelView * vec4(aPosition, 1.0);
+  vEyePos = eyePos.xyz;
+  vNormal = uNormalMatrix * aNormal;
+  vTexCoord = aTexCoord;
+  gl_Position = uProjection * eyePos;
+}`;
+
+// uMode: 0 colour, 1 unlit texture, 2 smooth shading, 3 shaded texture,
+//        4 picking (flat id colour)
+const fragmentShaderSource = `
+precision mediump float;
+varying vec3 vNormal;
+varying vec3 vEyePos;
+varying vec2 vTexCoord;
+uniform int uMode;
+uniform vec3 uColor;
+uniform sampler2D uTexture;
+uniform float uSelected;
+
+void main() {
+  if (uMode == 4) {
+    gl_FragColor = vec4(uColor, 1.0);
+    return;
+  }
+
+  vec3 base = uColor;
+  if (uMode == 1 || uMode == 3) base = texture2D(uTexture, vTexCoord).rgb;
+
+  vec3 color = base;
+  if (uMode >= 2) {
+    // Blinn-Phong, the light is fixed relative to the camera
+    vec3 n = normalize(vNormal);
+    vec3 v = normalize(-vEyePos);
+    vec3 l = normalize(vec3(0.4, 0.8, 0.6));
+    if (dot(n, v) < 0.0) n = -n;          // light both sides of thin parts
+    vec3 h = normalize(l + v);
+    color = base * (0.28 + 0.72 * max(dot(n, l), 0.0))
+          + vec3(0.22) * pow(max(dot(n, h), 0.0), 32.0);
+  }
+
+  gl_FragColor = vec4(mix(color, vec3(1.0, 0.4, 0.2), uSelected * 0.4), 1.0);
+}`;
+
+function compileShader(type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(shader);
+  return shader;
+}
+
+const program = gl.createProgram();
+gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSource));
+gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource));
+gl.bindAttribLocation(program, 0, "aPosition");
+gl.bindAttribLocation(program, 1, "aNormal");
+gl.bindAttribLocation(program, 2, "aTexCoord");
+gl.linkProgram(program);
+gl.useProgram(program);
+
+const uModelView    = gl.getUniformLocation(program, "uModelView");
+const uProjection   = gl.getUniformLocation(program, "uProjection");
+const uNormalMatrix = gl.getUniformLocation(program, "uNormalMatrix");
+const uMode         = gl.getUniformLocation(program, "uMode");
+const uColor        = gl.getUniformLocation(program, "uColor");
+const uSelected     = gl.getUniformLocation(program, "uSelected");
+
 gl.enable(gl.DEPTH_TEST);
 
-/* ---------- Mesh üretimi: küp, küre, silindir (düzleştirilmiş üçgenler) + OBJ ---------- */
-function mkMesh(P,N,T){
- const b=(d,n)=>{const o=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,o);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(d),gl.STATIC_DRAW);return o};
- return{p:b(P),n:b(N),t:b(T),c:P.length/3};
+// ---------------------------------------------------------------------------
+// Meshes: unit cube, sphere and cylinder (plain triangle lists, no indices),
+// plus a small OBJ loader so a part can be swapped for a real model.
+// ---------------------------------------------------------------------------
+
+function makeMesh(positions, normals, texCoords) {
+  function upload(data) {
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    return buffer;
+  }
+  return {
+    positions: upload(positions),
+    normals: upload(normals),
+    texCoords: upload(texCoords),
+    count: positions.length / 3,
+  };
 }
-function cube(){const P=[],N=[],T=[];
- const F=[[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,-1]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[-1,0,0],[0,1,0]]];
- for(const [n,u,v] of F){const q=[[-1,-1],[1,-1],[1,1],[-1,1]];
-  for(const i of [0,1,2,0,2,3]){const [a,b]=q[i];P.push(...[0,1,2].map(k=>.5*(n[k]+a*u[k]+b*v[k])));N.push(...n);T.push((a+1)/2,(b+1)/2)}}
- return mkMesh(P,N,T)}
-function sphere(S=24,R=16){const P=[],N=[],T=[];
- const v=(i,j)=>{const th=i/R*Math.PI,ph=j/S*2*Math.PI;return[Math.sin(th)*Math.cos(ph),Math.cos(th),Math.sin(th)*Math.sin(ph),j/S,i/R]};
- for(let i=0;i<R;i++)for(let j=0;j<S;j++)for(const q of [[i,j],[i+1,j],[i+1,j+1],[i,j],[i+1,j+1],[i,j+1]]){const a=v(...q);P.push(a[0],a[1],a[2]);N.push(a[0],a[1],a[2]);T.push(a[3],a[4])}
- return mkMesh(P,N,T)}
-function cylinder(S=20){const P=[],N=[],T=[];const pt=(p,n,t)=>{P.push(...p);N.push(...n);T.push(...t)};
- for(let j=0;j<S;j++){const a=j/S*2*Math.PI,b=(j+1)/S*2*Math.PI;
-  const A=[.5*Math.cos(a),.5*Math.sin(a)],B=[.5*Math.cos(b),.5*Math.sin(b)];
-  const nA=[Math.cos(a),0,Math.sin(a)],nB=[Math.cos(b),0,Math.sin(b)];
-  pt([A[0],-.5,A[1]],nA,[j/S,0]);pt([B[0],-.5,B[1]],nB,[(j+1)/S,0]);pt([B[0],.5,B[1]],nB,[(j+1)/S,1]);
-  pt([A[0],-.5,A[1]],nA,[j/S,0]);pt([B[0],.5,B[1]],nB,[(j+1)/S,1]);pt([A[0],.5,A[1]],nA,[j/S,1]);
-  for(const y of [.5,-.5]){const n=[0,y*2,0];pt([0,y,0],n,[.5,.5]);pt([A[0],y,A[1]],n,[.5+A[0],.5+A[1]]);pt([B[0],y,B[1]],n,[.5+B[0],.5+B[1]])}}
- return mkMesh(P,N,T)}
-function parseOBJ(txt){ // v/vt/vn, çokgenleri üçgenler, normal yoksa yüz normalini kullanır
- const v=[],vt=[],vn=[],P=[],N=[],T=[],ix=(i,a)=>i<0?a.length+i:i-1;
- for(const l of txt.split('\n')){const s=l.trim().split(/\s+/);
-  if(s[0]=='v')v.push(s.slice(1,4).map(Number));else if(s[0]=='vt')vt.push(s.slice(1,3).map(Number));
-  else if(s[0]=='vn')vn.push(s.slice(1,4).map(Number));
-  else if(s[0]=='f'){const c=s.slice(1).map(q=>q.split('/').map(x=>x===''||x===undefined?NaN:parseInt(x)));
-   for(let i=1;i<c.length-1;i++){const t=[c[0],c[i],c[i+1]],p=t.map(x=>v[ix(x[0],v)]);
-    const fn=cross(p[1].map((q,k)=>q-p[0][k]),p[2].map((q,k)=>q-p[0][k]));const L=Math.hypot(...fn)||1;
-    t.forEach((x,k)=>{P.push(...p[k]);N.push(...(x[2]==x[2]?vn[ix(x[2],vn)]:fn.map(q=>q/L)));T.push(...(x[1]==x[1]?vt[ix(x[1],vt)]:[0,0]))})}}}
- return mkMesh(P,N,T)}
-const meshes={cube:cube(),sphere:sphere(),cyl:cylinder()};
 
-/* ---------- Doku ---------- */
-const tex=gl.createTexture();
-function setTex(src){gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
- gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
- for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v)}
-(()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'); // varsayılan: arı çizgileri
- for(let i=0;i<8;i++){x.fillStyle=i%2?'#2a2118':'#f2c230';x.fillRect(i*16,0,16,128)}setTex(c)})();
+function makeCube() {
+  const positions = [], normals = [], texCoords = [];
+  // each face: [normal, u axis, v axis]
+  const faces = [
+    [[ 1, 0, 0], [ 0, 0, -1], [0, 1,  0]],
+    [[-1, 0, 0], [ 0, 0,  1], [0, 1,  0]],
+    [[ 0, 1, 0], [ 1, 0,  0], [0, 0, -1]],
+    [[ 0,-1, 0], [ 1, 0,  0], [0, 0,  1]],
+    [[ 0, 0, 1], [ 1, 0,  0], [0, 1,  0]],
+    [[ 0, 0,-1], [-1, 0,  0], [0, 1,  0]],
+  ];
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  for (const [n, u, v] of faces) {
+    for (const i of [0, 1, 2, 0, 2, 3]) {
+      const [a, b] = corners[i];
+      for (let k = 0; k < 3; k++) positions.push(0.5 * (n[k] + a * u[k] + b * v[k]));
+      normals.push(...n);
+      texCoords.push((a + 1) / 2, (b + 1) / 2);
+    }
+  }
+  return makeMesh(positions, normals, texCoords);
+}
 
-/* ---------- Hiyerarşik model: düğüm ağacı ---------- */
-const nodes=[],legs=[];let wingIdx=[];
-function node(name,parent,t,mesh,scl,off,col,rot=[0,0,0]){
- const n={name,t,mesh,scl,off,col,rot:[...rot],kids:[]};nodes.push(n);const i=nodes.length-1;
- if(parent>=0)nodes[parent].kids.push(i);return i}
-(function build(){
- const th=node('Göğüs',-1,[0,0,0],'sphere',[.9,.55,.6],[0,0,0],[.85,.6,.12]);
- node('Karın',th,[-.55,-.05,0],'sphere',[1.2,.62,.62],[-.5,0,0],[.95,.75,.15],[0,0,0]);
- const hd=node('Baş',th,[.6,.1,0],'sphere',[.45,.4,.4],[.15,0,0],[.2,.15,.12]);
- for(const s of [1,-1]){
-  node('Göz '+(s>0?'sağ':'sol'),hd,[.28,.08,s*.17],'sphere',[.14,.14,.14],[0,0,0],[.05,.05,.05]);
-  node('Anten '+(s>0?'sağ':'sol'),hd,[.3,.2,s*.12],'cyl',[.04,.55,.04],[0,.27,0],[.2,.15,.12],[s*20,0,-50]);
-  const w=node('Kanat '+(s>0?'sağ':'sol'),th,[0,.45,s*.15],'cube',[.7,.03,1.4],[-.1,0,s*.7],[.75,.85,.95]);wingIdx.push([w,s]);
-  for(let k=0;k<3;k++){
-   const up=node('Üst bacak '+(s>0?'sağ':'sol')+(k+1),th,[[.3,0,-.3][k],-.2,s*.35],'cyl',[.09,.7,.09],[0,-.35,0],[.25,.18,.12],[s*-55,0,0]);
-   const lo=node('Alt bacak '+(s>0?'sağ':'sol')+(k+1),up,[0,-.7,0],'cyl',[.07,.8,.07],[0,-.4,0],[.3,.22,.15],[s*50,0,0]);
-   legs.push({up,lo,s,grp:(k+(s>0?0:1))%2});}}
-})();
-const REST=nodes.map(n=>[...n.rot]);
+function makeSphere(slices = 24, stacks = 16) {
+  const positions = [], normals = [], texCoords = [];
+  function addVertex(i, j) {
+    const theta = i / stacks * Math.PI, phi = j / slices * 2 * Math.PI;
+    const p = [Math.sin(theta) * Math.cos(phi), Math.cos(theta), Math.sin(theta) * Math.sin(phi)];
+    positions.push(...p);
+    normals.push(...p);              // unit sphere: normal = position
+    texCoords.push(j / slices, i / stacks);
+  }
+  for (let i = 0; i < stacks; i++) {
+    for (let j = 0; j < slices; j++) {
+      addVertex(i, j);     addVertex(i + 1, j);     addVertex(i + 1, j + 1);
+      addVertex(i, j);     addVertex(i + 1, j + 1); addVertex(i, j + 1);
+    }
+  }
+  return makeMesh(positions, normals, texCoords);
+}
 
-/* ---------- Çizim: açık matris yığını ile ağaç gezme ---------- */
-const G=[0,0,0,0,0,0]; // konum x,y,z + yön rx,ry,rz
-let V=m4.id(),Pm=m4.id(),sel=-1,mode=2;
-const cam={yaw:-30,pitch:20,dist:7,px:0,py:0};
-const stack=[];let cur=null;
-function drawMesh(mesh,M,col,hl,md){
- const MV=m4.mul(V,M);gl.uniformMatrix4fv(uMV,false,MV);gl.uniformMatrix3fv(uNm,false,normalMat(MV));
- gl.uniform3fv(uCol,col);gl.uniform1f(uSel,hl?1:0);gl.uniform1i(uMode,md);
- [[mesh.p,0,3],[mesh.n,1,3],[mesh.t,2,2]].forEach(([b,i,sz])=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,sz,gl.FLOAT,false,0,0)});
- gl.drawArrays(gl.TRIANGLES,0,mesh.c)}
-function drawNode(i,pick){
- const n=nodes[i];stack.push(cur);                                   // push
- cur=m4.mul(cur,m4.T(...n.t));cur=m4.mul(cur,m4.Ry(n.rot[1]));cur=m4.mul(cur,m4.Rz(n.rot[2]));cur=m4.mul(cur,m4.Rx(n.rot[0]));
- const M=m4.mul(cur,m4.mul(m4.T(...n.off),m4.S(...n.scl)));         // sadece parçanın kendisine uygulanır
- if(pick)drawMesh(meshes[n.mesh],M,[(i+1)/255,0,0],false,4);
- else drawMesh(meshes[n.mesh],M,n.col,i===sel,mode);
- for(const k of n.kids)drawNode(k,pick);
- cur=stack.pop()}                                                    // pop
-function scene(pick){
- const a=cv.width/cv.height;Pm=m4.persp(Math.PI/4,a,.1,100);
- V=m4.mul(m4.T(cam.px,cam.py,-cam.dist),m4.mul(m4.Rx(cam.pitch),m4.Ry(cam.yaw)));
- gl.uniformMatrix4fv(uP,false,Pm);gl.viewport(0,0,cv.width,cv.height);
- if(pick)gl.clearColor(0,0,0,1);else gl.clearColor(.93,.94,.91,1);
- gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- if(!pick){gl.uniform1i(uSel,0);drawMesh(meshes.cube,m4.mul(m4.T(0,-1.45,0),m4.S(14,.04,14)),[.72,.78,.68],false,2)} // zemin
- cur=m4.mul(m4.T(G[0],G[1],G[2]),m4.mul(m4.Ry(G[4]),m4.mul(m4.Rx(G[3]),m4.Rz(G[5]))));
- drawNode(0,pick)}
-function resize(){const d=window.devicePixelRatio||1,w=Math.round(cv.clientWidth*d),h=Math.round(cv.clientHeight*d);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}}
-function pickAt(cx,cy){ // her parçayı kendi kimlik rengiyle çiz, pikseli oku
- resize();scene(true);const px=new Uint8Array(4);
- gl.readPixels(Math.floor(cx*cv.width/cv.clientWidth),Math.floor(cv.height-1-cy*cv.height/cv.clientHeight),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);
- return px[0]-1}
+// Unit cylinder along y, radius 0.5, from y = -0.5 to 0.5, with caps.
+function makeCylinder(slices = 20) {
+  const positions = [], normals = [], texCoords = [];
+  function addVertex(p, n, t) { positions.push(...p); normals.push(...n); texCoords.push(...t); }
 
-/* ---------- Arayüz: sürgüler (Bölüm 4) ---------- */
-const syncs=[];
-function slider(host,label,min,max,step,get,set){
- const d=document.createElement('label');d.innerHTML=`<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
- const r=d.children[1],o=d.children[2];const upd=()=>{const v=get();r.value=v;o.textContent=(+v).toFixed(step<1?1:0)};
- r.oninput=()=>{set(+r.value);upd()};upd();syncs.push(upd);host.append(d)}
-const syncAll=()=>{document.getElementById('selName').textContent=sel<0?'yok':nodes[sel].name;syncs.forEach(f=>f())};
-['X','Y','Z'].forEach((a,k)=>slider(jsl,'Döndür '+a,-180,180,1,()=>sel<0?0:nodes[sel].rot[k],v=>{if(sel>=0)nodes[sel].rot[k]=v}));
-[['Konum X',-4,4,.1],['Konum Y',-3,3,.1],['Konum Z',-4,4,.1],['Eğim X',-180,180,1],['Yön Y',-180,180,1],['Yan Z',-180,180,1]]
- .forEach(([l,mn,mx,st],i)=>slider(gsl,l,mn,mx,st,()=>G[i],v=>G[i]=v));
+  for (let j = 0; j < slices; j++) {
+    const a0 = j / slices * 2 * Math.PI, a1 = (j + 1) / slices * 2 * Math.PI;
+    const x0 = 0.5 * Math.cos(a0), z0 = 0.5 * Math.sin(a0);
+    const x1 = 0.5 * Math.cos(a1), z1 = 0.5 * Math.sin(a1);
+    const n0 = [Math.cos(a0), 0, Math.sin(a0)], n1 = [Math.cos(a1), 0, Math.sin(a1)];
+    const u0 = j / slices, u1 = (j + 1) / slices;
 
-/* ---------- Fare: seçme, doğrudan manipülasyon, orbit/pan/zoom ---------- */
-let drag=null;
-cv.addEventListener('contextmenu',e=>e.preventDefault());
-cv.addEventListener('mousedown',e=>{
- const r=cv.getBoundingClientRect();
- if(e.button===0){const id=pickAt(e.clientX-r.left,e.clientY-r.top);
-  if(id>=0&&id<nodes.length){sel=id;syncAll();drag='part'}else{sel=-1;syncAll();drag='orbit'}}
- else drag='pan';
- cv.style.cursor='grabbing'});
-addEventListener('mouseup',()=>{drag=null;cv.style.cursor='grab'});
-addEventListener('mousemove',e=>{if(!drag)return;const dx=e.movementX,dy=e.movementY;
- if(drag==='part'&&sel>=0){const q=nodes[sel].rot;if(e.altKey)q[2]+=dx*.5;else{q[1]+=dx*.5;q[0]+=dy*.5}syncAll()}
- else if(drag==='orbit'){cam.yaw+=dx*.4;cam.pitch=Math.max(-89,Math.min(89,cam.pitch+dy*.4))}
- else if(drag==='pan'){const k=cam.dist*.0016;cam.px+=dx*k;cam.py-=dy*k}});
-cv.addEventListener('wheel',e=>{e.preventDefault();cam.dist=Math.max(2,Math.min(30,cam.dist*Math.exp(e.deltaY*.001)))},{passive:false});
+    // side
+    addVertex([x0, -0.5, z0], n0, [u0, 0]);
+    addVertex([x1, -0.5, z1], n1, [u1, 0]);
+    addVertex([x1,  0.5, z1], n1, [u1, 1]);
+    addVertex([x0, -0.5, z0], n0, [u0, 0]);
+    addVertex([x1,  0.5, z1], n1, [u1, 1]);
+    addVertex([x0,  0.5, z0], n0, [u0, 1]);
 
-/* ---------- Animasyon: anahtar kareler, interpolasyon, kaydet/yükle ---------- */
-let frames=[],ki=-1,playing=false,tAnim=0;
-const snap=()=>({g:[...G],r:nodes.map(n=>[...n.rot])});
-const apply=f=>{f.g.forEach((v,i)=>G[i]=v);f.r.forEach((r,i)=>{if(nodes[i])nodes[i].rot=[...r]})};
-const lerp=(a,b,t)=>a+(b-a)*t;
-const blend=(A,B,t)=>({g:A.g.map((v,i)=>lerp(v,B.g[i],t)),r:A.r.map((r,i)=>r.map((v,k)=>lerp(v,B.r[i][k],t)))});
-const $=id=>document.getElementById(id);
-function renderKF(){$('kl').innerHTML=frames.map((_,i)=>`<li data-i="${i}" class="${i===ki?'on':''}">${i+1}</li>`).join('')||'<small>Henüz kare yok</small>'}
-$('kl').onclick=e=>{const i=e.target.dataset.i;if(i===undefined)return;ki=+i;apply(frames[ki]);renderKF();syncAll()};
-$('addK').onclick=()=>{frames.splice(ki+1,0,snap());ki++;renderKF()};
-$('updK').onclick=()=>{if(ki>=0)frames[ki]=snap()};
-$('delK').onclick=()=>{if(ki>=0){frames.splice(ki,1);ki=Math.min(ki,frames.length-1);renderKF()}};
-$('clrK').onclick=()=>{frames=[];ki=-1;renderKF()};
-$('dur').oninput=e=>$('durO').textContent=e.target.value;
-$('play').onclick=()=>{if(frames.length<2)return;playing=!playing;tAnim=0;$('play').textContent=playing?'Durdur':'Oynat'};
-function stopPlay(){playing=false;$('play').textContent='Oynat'}
-function setDur(d){$('dur').value=d;$('durO').textContent=d}
-const base=()=>({g:[0,0,0,0,0,0],r:REST.map(r=>[...r])});
-function presetWalk(){ // tripod yürüyüşü: 8 kare, iki bacak grubu ters fazda
- const N=8,fr=[];
- for(let i=0;i<N;i++){const f=base(),ph=i/N*2*Math.PI;
-  for(const L of legs){const p=ph+(L.grp?Math.PI:0),lift=Math.max(0,Math.cos(p));
-   f.r[L.up][2]=22*Math.sin(p);f.r[L.up][0]=-L.s*(55+18*lift)}
-  f.r[1][2]=4*Math.sin(2*ph);f.g[1]=.03*Math.sin(2*ph);fr.push(f)}
- return fr}
-function presetFly(){ // 8 kare kanat çırpma, gövde hafifçe sallanır, bacaklar geriye sarkar
- const fr=[];
- for(let i=0;i<8;i++){const f=base(),ph=i/8*2*Math.PI;
-  for(const [w,s] of wingIdx)f.r[w][0]=s*45*Math.sin(ph);
-  for(const L of legs){f.r[L.up][2]=-25;f.r[L.up][0]=-L.s*30}
-  f.g[1]=.15*Math.sin(ph);f.g[3]=-10;fr.push(f)}
- return fr}
-$('preWalk').onclick=()=>{stopPlay();frames=presetWalk();ki=0;setDur(.12);renderKF();apply(frames[0]);syncAll()};
-$('preFly').onclick=()=>{stopPlay();frames=presetFly();ki=0;setDur(.05);renderKF();apply(frames[0]);syncAll()};
-$('save').onclick=()=>{const a=document.createElement('a');
- a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,dur:+$('dur').value,frames})],{type:'application/json'}));
- a.download='animasyon.json';a.click();URL.revokeObjectURL(a.href)};
-$('load').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
- r.onload=()=>{try{const d=JSON.parse(r.result);stopPlay();frames=d.frames;if(d.dur)setDur(d.dur);ki=0;renderKF();apply(frames[0]);syncAll()}catch(x){alert('Dosya okunamadı: '+x.message)}};r.readAsText(f);e.target.value=''};
+    // top and bottom caps
+    for (const y of [0.5, -0.5]) {
+      const n = [0, Math.sign(y), 0];
+      addVertex([0, y, 0], n, [0.5, 0.5]);
+      addVertex([x0, y, z0], n, [0.5 + x0, 0.5 + z0]);
+      addVertex([x1, y, z1], n, [0.5 + x1, 0.5 + z1]);
+    }
+  }
+  return makeMesh(positions, normals, texCoords);
+}
 
-/* ---------- Doku / OBJ yükleme, görünüm modu ---------- */
-$('mode').onchange=e=>mode=+e.target.value;
-$('texFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{setTex(im);URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)};
-$('objFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(sel<0){alert('Önce bir parça seç.');return}
- const r=new FileReader();r.onload=()=>{const n=nodes[sel];meshes['obj'+sel]=parseOBJ(r.result);n.mesh='obj'+sel;n.scl=[1,1,1];n.off=[0,0,0]};r.readAsText(f);e.target.value=''};
+// Handles v / vt / vn and faces like "f 1 2 3", "f 1/1 2/2 3/3", "f 1//1 ...".
+// Polygons are split into a triangle fan. Faces without normals get a flat one.
+function parseOBJ(text) {
+  const verts = [], uvs = [], norms = [];
+  const positions = [], normals = [], texCoords = [];
+  // OBJ indices start at 1; negative ones count back from the end
+  const resolve = (i, list) => (i < 0 ? list.length + i : i - 1);
 
-/* ---------- Ana döngü ---------- */
-let last=0;
-function loop(ts){const dt=Math.min((ts-last)/1000,.1);last=ts;
- if(playing){const n=frames.length,seg=$('loop').checked?n:n-1;tAnim+=dt/+$('dur').value;
-  if(tAnim>=seg){if($('loop').checked)tAnim%=seg;else{stopPlay();tAnim=0}}
-  const i=Math.floor(tAnim);apply(blend(frames[i],frames[(i+1)%n],tAnim-i));syncAll()}
- resize();scene(false);requestAnimationFrame(loop)}
-renderKF();requestAnimationFrame(loop);
-</script></body></html>
+  for (const line of text.split("\n")) {
+    const parts = line.trim().split(/\s+/);
+    const keyword = parts[0];
+
+    if (keyword === "v") verts.push(parts.slice(1, 4).map(Number));
+    else if (keyword === "vt") uvs.push(parts.slice(1, 3).map(Number));
+    else if (keyword === "vn") norms.push(parts.slice(1, 4).map(Number));
+    else if (keyword === "f") {
+      const corners = parts.slice(1).map(c => c.split("/").map(x => (x ? parseInt(x) : NaN)));
+
+      for (let i = 1; i < corners.length - 1; i++) {
+        const tri = [corners[0], corners[i], corners[i + 1]];
+        const p = tri.map(c => verts[resolve(c[0], verts)]);
+
+        const edge1 = p[1].map((x, k) => x - p[0][k]);
+        const edge2 = p[2].map((x, k) => x - p[0][k]);
+        const faceNormal = cross(edge1, edge2);
+        const length = Math.hypot(...faceNormal) || 1;
+
+        tri.forEach((c, k) => {
+          const [, uvIndex, normalIndex] = c;
+          positions.push(...p[k]);
+          normals.push(...(Number.isFinite(normalIndex) ? norms[resolve(normalIndex, norms)]
+                                                        : faceNormal.map(x => x / length)));
+          texCoords.push(...(Number.isFinite(uvIndex) ? uvs[resolve(uvIndex, uvs)] : [0, 0]));
+        });
+      }
+    }
+  }
+  return makeMesh(positions, normals, texCoords);
+}
+
+const meshes = { cube: makeCube(), sphere: makeSphere(), cylinder: makeCylinder() };
+
+// ---------------------------------------------------------------------------
+// Texture (one shared texture; the default is bee stripes drawn on a canvas)
+// ---------------------------------------------------------------------------
+
+const texture = gl.createTexture();
+
+function setTexture(image) {
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  // no mipmaps and clamped edges, so any image size works in WebGL 1
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+
+function makeStripeTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const ctx = c.getContext("2d");
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = i % 2 ? "#2a2118" : "#f2c230";
+    ctx.fillRect(i * 16, 0, 16, 128);
+  }
+  return c;
+}
+
+setTexture(makeStripeTexture());
+
+// ---------------------------------------------------------------------------
+// Hierarchical model. Each node has:
+//   joint  - position of its joint in the parent's frame
+//   rot    - joint angles [x, y, z] in degrees (what the sliders and keyframes change)
+//   mesh, size, meshOffset - how the part itself is drawn; this only affects
+//            the part, not its children
+// ---------------------------------------------------------------------------
+
+const nodes = [];
+const legs = [];      // { upper, lower, side, group } for the walk preset
+const wings = [];     // { id, side } for the fly preset
+
+function addNode(name, parent, joint, mesh, size, meshOffset, color, rot = [0, 0, 0]) {
+  nodes.push({ name, joint, mesh, size, meshOffset, color, rot: [...rot], children: [] });
+  const id = nodes.length - 1;
+  if (parent >= 0) nodes[parent].children.push(id);
+  return id;
+}
+
+function buildBug() {
+  const thorax = addNode("Göğüs", -1, [0, 0, 0], "sphere", [0.9, 0.55, 0.6], [0, 0, 0], [0.85, 0.6, 0.12]);
+  addNode("Karın", thorax, [-0.55, -0.05, 0], "sphere", [1.2, 0.62, 0.62], [-0.5, 0, 0], [0.95, 0.75, 0.15]);
+  const head = addNode("Baş", thorax, [0.6, 0.1, 0], "sphere", [0.45, 0.4, 0.4], [0.15, 0, 0], [0.2, 0.15, 0.12]);
+
+  for (const side of [1, -1]) {
+    const sideName = side > 0 ? "sağ" : "sol";
+
+    addNode("Göz " + sideName, head, [0.28, 0.08, side * 0.17], "sphere",
+            [0.14, 0.14, 0.14], [0, 0, 0], [0.05, 0.05, 0.05]);
+    addNode("Anten " + sideName, head, [0.3, 0.2, side * 0.12], "cylinder",
+            [0.04, 0.55, 0.04], [0, 0.27, 0], [0.2, 0.15, 0.12], [side * 20, 0, -50]);
+
+    const wing = addNode("Kanat " + sideName, thorax, [0, 0.45, side * 0.15], "cube",
+                         [0.7, 0.03, 1.4], [-0.1, 0, side * 0.7], [0.75, 0.85, 0.95]);
+    wings.push({ id: wing, side });
+
+    for (let k = 0; k < 3; k++) {
+      const hipX = [0.3, 0, -0.3][k];
+      const upper = addNode("Üst bacak " + sideName + (k + 1), thorax, [hipX, -0.2, side * 0.35], "cylinder",
+                            [0.09, 0.7, 0.09], [0, -0.35, 0], [0.25, 0.18, 0.12], [side * -55, 0, 0]);
+      const lower = addNode("Alt bacak " + sideName + (k + 1), upper, [0, -0.7, 0], "cylinder",
+                            [0.07, 0.8, 0.07], [0, -0.4, 0], [0.3, 0.22, 0.15], [side * 50, 0, 0]);
+      // tripod gait: legs alternate between the two groups
+      legs.push({ upper, lower, side, group: (k + (side > 0 ? 0 : 1)) % 2 });
+    }
+  }
+}
+
+buildBug();
+const restAngles = nodes.map(n => [...n.rot]);
+
+// ---------------------------------------------------------------------------
+// Drawing: walk the tree with an explicit matrix stack
+// ---------------------------------------------------------------------------
+
+const globalPose = [0, 0, 0, 0, 0, 0];   // position x, y, z and rotation x, y, z
+const camera = { yaw: -30, pitch: 20, distance: 7, panX: 0, panY: 0 };
+let viewMatrix = identity();
+let selected = -1;
+let renderMode = 2;
+
+const matrixStack = [];
+let current = null;
+
+function drawMesh(mesh, model, color, highlighted, mode) {
+  const modelView = multiply(viewMatrix, model);
+  gl.uniformMatrix4fv(uModelView, false, modelView);
+  gl.uniformMatrix3fv(uNormalMatrix, false, normalMatrix(modelView));
+  gl.uniform3fv(uColor, color);
+  gl.uniform1f(uSelected, highlighted ? 1 : 0);
+  gl.uniform1i(uMode, mode);
+
+  const attributes = [[mesh.positions, 0, 3], [mesh.normals, 1, 3], [mesh.texCoords, 2, 2]];
+  for (const [buffer, location, size] of attributes) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(location);
+    gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
+  }
+  gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+}
+
+function drawNode(id, picking) {
+  const node = nodes[id];
+  matrixStack.push(current);
+
+  current = multiplyAll(current, translate(...node.joint),
+                        rotateY(node.rot[1]), rotateZ(node.rot[2]), rotateX(node.rot[0]));
+
+  const model = multiplyAll(current, translate(...node.meshOffset), scale(...node.size));
+  if (picking) {
+    // red channel = id + 1, so 0 means background
+    drawMesh(meshes[node.mesh], model, [(id + 1) / 255, 0, 0], false, 4);
+  } else {
+    drawMesh(meshes[node.mesh], model, node.color, id === selected, renderMode);
+  }
+
+  for (const child of node.children) drawNode(child, picking);
+  current = matrixStack.pop();
+}
+
+function drawScene(picking) {
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniformMatrix4fv(uProjection, false, perspective(Math.PI / 4, canvas.width / canvas.height, 0.1, 100));
+  viewMatrix = multiplyAll(translate(camera.panX, camera.panY, -camera.distance),
+                           rotateX(camera.pitch), rotateY(camera.yaw));
+
+  if (picking) gl.clearColor(0, 0, 0, 1);
+  else gl.clearColor(0.93, 0.94, 0.91, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  if (!picking) {
+    // ground plane
+    drawMesh(meshes.cube, multiply(translate(0, -1.45, 0), scale(14, 0.04, 14)), [0.72, 0.78, 0.68], false, 2);
+  }
+
+  const [px, py, pz, rx, ry, rz] = globalPose;
+  current = multiplyAll(translate(px, py, pz), rotateY(ry), rotateX(rx), rotateZ(rz));
+  drawNode(0, picking);
+}
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.round(canvas.clientWidth * dpr);
+  const height = Math.round(canvas.clientHeight * dpr);
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+}
+
+// Draw every part in its id colour and read back the pixel under the mouse.
+// Returns the node id, or -1 for the background.
+function pickAt(x, y) {
+  resizeCanvas();
+  drawScene(true);
+  const pixel = new Uint8Array(4);
+  gl.readPixels(Math.floor(x * canvas.width / canvas.clientWidth),
+                Math.floor(canvas.height - 1 - y * canvas.height / canvas.clientHeight),
+                1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+  return pixel[0] - 1;
+}
+
+// ---------------------------------------------------------------------------
+// Sliders (Bölüm 4)
+// ---------------------------------------------------------------------------
+
+const sliderUpdaters = [];
+
+function addSlider(container, text, min, max, step, getValue, setValue) {
+  const label = document.createElement("label");
+  label.innerHTML = `<span>${text}</span><input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
+  const input = label.querySelector("input");
+  const output = label.querySelector("output");
+
+  function refresh() {
+    const value = getValue();
+    input.value = value;
+    output.textContent = (+value).toFixed(step < 1 ? 1 : 0);
+  }
+  input.oninput = () => { setValue(+input.value); refresh(); };
+
+  refresh();
+  sliderUpdaters.push(refresh);
+  container.append(label);
+}
+
+function refreshUI() {
+  $("selectedName").textContent = selected < 0 ? "yok" : nodes[selected].name;
+  sliderUpdaters.forEach(refresh => refresh());
+}
+
+["X", "Y", "Z"].forEach((axis, k) => {
+  addSlider($("jointSliders"), "Döndür " + axis, -180, 180, 1,
+            () => (selected < 0 ? 0 : nodes[selected].rot[k]),
+            value => { if (selected >= 0) nodes[selected].rot[k] = value; });
+});
+
+const globalSliderSpecs = [
+  ["Konum X", -4, 4, 0.1],
+  ["Konum Y", -3, 3, 0.1],
+  ["Konum Z", -4, 4, 0.1],
+  ["Eğim X", -180, 180, 1],
+  ["Yön Y", -180, 180, 1],
+  ["Yan Z", -180, 180, 1],
+];
+globalSliderSpecs.forEach(([text, min, max, step], i) => {
+  addSlider($("globalSliders"), text, min, max, step,
+            () => globalPose[i], value => { globalPose[i] = value; });
+});
+
+// ---------------------------------------------------------------------------
+// Mouse: pick, drag a part to rotate it, orbit / pan / zoom the camera
+// ---------------------------------------------------------------------------
+
+let dragMode = null;   // "part", "orbit", "pan" or null
+
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+canvas.addEventListener("mousedown", e => {
+  const rect = canvas.getBoundingClientRect();
+  if (e.button === 0) {
+    const id = pickAt(e.clientX - rect.left, e.clientY - rect.top);
+    if (id >= 0 && id < nodes.length) {
+      selected = id;
+      dragMode = "part";
+    } else {
+      selected = -1;
+      dragMode = "orbit";
+    }
+    refreshUI();
+  } else {
+    dragMode = "pan";
+  }
+  canvas.style.cursor = "grabbing";
+});
+
+window.addEventListener("mouseup", () => {
+  dragMode = null;
+  canvas.style.cursor = "grab";
+});
+
+window.addEventListener("mousemove", e => {
+  if (!dragMode) return;
+  const dx = e.movementX, dy = e.movementY;
+
+  if (dragMode === "part" && selected >= 0) {
+    const rot = nodes[selected].rot;
+    if (e.altKey) {
+      rot[2] += dx * 0.5;
+    } else {
+      rot[1] += dx * 0.5;
+      rot[0] += dy * 0.5;
+    }
+    refreshUI();
+  } else if (dragMode === "orbit") {
+    camera.yaw += dx * 0.4;
+    camera.pitch = Math.max(-89, Math.min(89, camera.pitch + dy * 0.4));
+  } else if (dragMode === "pan") {
+    const speed = camera.distance * 0.0016;
+    camera.panX += dx * speed;
+    camera.panY -= dy * speed;
+  }
+});
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  camera.distance = Math.max(2, Math.min(30, camera.distance * Math.exp(e.deltaY * 0.001)));
+}, { passive: false });
+
+// ---------------------------------------------------------------------------
+// Animation: keyframes, linear interpolation, presets, save / load.
+// A keyframe is { global: [6 numbers], rot: [[x, y, z] for every node] }.
+// ---------------------------------------------------------------------------
+
+let frames = [];
+let currentFrame = -1;
+let playing = false;
+let animTime = 0;      // position in the animation, measured in frames
+
+function captureFrame() {
+  return { global: [...globalPose], rot: nodes.map(n => [...n.rot]) };
+}
+
+function applyFrame(frame) {
+  frame.global.forEach((value, i) => { globalPose[i] = value; });
+  frame.rot.forEach((rot, i) => { if (nodes[i]) nodes[i].rot = [...rot]; });
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function blendFrames(a, b, t) {
+  return {
+    global: a.global.map((value, i) => lerp(value, b.global[i], t)),
+    rot: a.rot.map((rot, i) => rot.map((value, k) => lerp(value, b.rot[i][k], t))),
+  };
+}
+
+function restFrame() {
+  return { global: [0, 0, 0, 0, 0, 0], rot: restAngles.map(r => [...r]) };
+}
+
+function renderFrameList() {
+  const items = frames.map((_, i) =>
+    `<li data-index="${i}" class="${i === currentFrame ? "on" : ""}">${i + 1}</li>`);
+  $("frameList").innerHTML = items.join("") || "<small>Henüz kare yok</small>";
+}
+
+function stopPlaying() {
+  playing = false;
+  $("playButton").textContent = "Oynat";
+}
+
+function setFrameTime(seconds) {
+  $("frameTime").value = seconds;
+  $("frameTimeOut").textContent = seconds;
+}
+
+function loadFrames(list) {
+  stopPlaying();
+  frames = list;
+  currentFrame = 0;
+  renderFrameList();
+  applyFrame(frames[0]);
+  refreshUI();
+}
+
+// Tripod walk: 8 frames, the two leg groups move in opposite phase.
+function presetWalk() {
+  const count = 8, result = [];
+  for (let i = 0; i < count; i++) {
+    const frame = restFrame(), phase = i / count * 2 * Math.PI;
+    for (const leg of legs) {
+      const p = phase + (leg.group ? Math.PI : 0);
+      const lift = Math.max(0, Math.cos(p));
+      frame.rot[leg.upper][2] = 22 * Math.sin(p);
+      frame.rot[leg.upper][0] = -leg.side * (55 + 18 * lift);
+    }
+    frame.rot[1][2] = 4 * Math.sin(2 * phase);    // abdomen sways
+    frame.global[1] = 0.03 * Math.sin(2 * phase); // body bobs
+    result.push(frame);
+  }
+  return result;
+}
+
+// Wing flapping: 8 frames, the body bobs and the legs hang back.
+function presetFly() {
+  const count = 8, result = [];
+  for (let i = 0; i < count; i++) {
+    const frame = restFrame(), phase = i / count * 2 * Math.PI;
+    for (const wing of wings) frame.rot[wing.id][0] = wing.side * 45 * Math.sin(phase);
+    for (const leg of legs) {
+      frame.rot[leg.upper][2] = -25;
+      frame.rot[leg.upper][0] = -leg.side * 30;
+    }
+    frame.global[1] = 0.15 * Math.sin(phase);
+    frame.global[3] = -10;
+    result.push(frame);
+  }
+  return result;
+}
+
+$("frameList").onclick = e => {
+  const index = e.target.dataset.index;
+  if (index === undefined) return;
+  currentFrame = +index;
+  applyFrame(frames[currentFrame]);
+  renderFrameList();
+  refreshUI();
+};
+
+$("addFrame").onclick = () => {
+  frames.splice(currentFrame + 1, 0, captureFrame());
+  currentFrame++;
+  renderFrameList();
+};
+
+$("updateFrame").onclick = () => {
+  if (currentFrame >= 0) frames[currentFrame] = captureFrame();
+};
+
+$("deleteFrame").onclick = () => {
+  if (currentFrame < 0) return;
+  frames.splice(currentFrame, 1);
+  currentFrame = Math.min(currentFrame, frames.length - 1);
+  renderFrameList();
+};
+
+$("clearFrames").onclick = () => {
+  stopPlaying();
+  frames = [];
+  currentFrame = -1;
+  renderFrameList();
+};
+
+$("frameTime").oninput = e => { $("frameTimeOut").textContent = e.target.value; };
+
+$("playButton").onclick = () => {
+  if (frames.length < 2) return;
+  playing = !playing;
+  animTime = 0;
+  $("playButton").textContent = playing ? "Durdur" : "Oynat";
+};
+
+$("presetWalk").onclick = () => { loadFrames(presetWalk()); setFrameTime(0.12); };
+$("presetFly").onclick = () => { loadFrames(presetFly()); setFrameTime(0.05); };
+
+$("saveButton").onclick = () => {
+  const data = JSON.stringify({ version: 1, frameTime: +$("frameTime").value, frames });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+  link.download = "animasyon.json";
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+$("loadFile").onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      loadFrames(data.frames);
+      if (data.frameTime) setFrameTime(data.frameTime);
+    } catch (err) {
+      alert("Dosya okunamadı: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+};
+
+// ---------------------------------------------------------------------------
+// Render mode, texture upload, OBJ upload
+// ---------------------------------------------------------------------------
+
+$("renderMode").onchange = e => { renderMode = +e.target.value; };
+
+$("textureFile").onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const image = new Image();
+  image.onload = () => {
+    setTexture(image);
+    URL.revokeObjectURL(image.src);
+  };
+  image.src = URL.createObjectURL(file);
+};
+
+$("objFile").onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (selected < 0) {
+    alert("Önce bir parça seç.");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const node = nodes[selected];
+    const key = "obj" + selected;
+    meshes[key] = parseOBJ(reader.result);
+    node.mesh = key;
+    node.size = [1, 1, 1];
+    node.meshOffset = [0, 0, 0];
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+};
+
+// ---------------------------------------------------------------------------
+// Main loop
+// ---------------------------------------------------------------------------
+
+let lastTime = 0;
+
+function tick(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  if (playing && frames.length < 2) stopPlaying();   // frames were deleted while playing
+
+  if (playing) {
+    const count = frames.length;
+    const looping = $("loop").checked;
+    const segments = looping ? count : count - 1;   // looping also blends last -> first
+
+    animTime += dt / +$("frameTime").value;
+    if (animTime >= segments) {
+      if (looping) {
+        animTime %= segments;
+      } else {
+        stopPlaying();
+        animTime = 0;
+      }
+    }
+
+    const i = Math.floor(animTime);
+    applyFrame(blendFrames(frames[i], frames[(i + 1) % count], animTime - i));
+    refreshUI();
+  }
+
+  resizeCanvas();
+  drawScene(false);
+  requestAnimationFrame(tick);
+}
+
+renderFrameList();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

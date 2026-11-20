@@ -28,7 +28,7 @@ Then open http://localhost:8000.
 | `tools/make_skybox.py` | generates the skybox images (replace them to use your own) |
 | `models/moth.obj`, `models/moth.rig.json` | the model the app loads, made by `tools/rig_from_tripo.py` |
 | `tools/rig_from_tripo.py` | renames/turns the Tripo parts and finds the joints |
-| `furkan.html` | Furkan's original standalone prototype (its features are now ported into `js/`) |
+| `furkan.html` | Furkan's original standalone prototype with a primitive bug model (its features were ported into `js/`; open it directly, no server needed) |
 | `tools/blender_export_rig.py` | Blender script that exports the real model + rig |
 | `tools/make_placeholder_moth.py` | generates a primitive placeholder model (for testing) |
 | `docs/MODELING.md` | how to build and export the moth in Blender |

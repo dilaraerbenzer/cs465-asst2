@@ -124,11 +124,11 @@ var partBuffers = [];     // Id -> { vBuffer, nBuffer, tBuffer, numVertices }
 
 function createNode( transform, render, sibling, child ) {
     var node = {
-    transform: transform,
-    render: render,
-    sibling: sibling,
-    child: child,
-    }
+        transform: transform,
+        render: render,
+        sibling: sibling,
+        child: child,
+    };
     return node;
 }
 
@@ -150,13 +150,13 @@ function initNodes( Id ) {
 
 function traverse( Id ) {
 
-   if(Id == null) return;
-   stack.push(modelViewMatrix);
-   modelViewMatrix = mult(modelViewMatrix, figure[Id].transform);
-   figure[Id].render();
-   if(figure[Id].child != null) traverse(figure[Id].child);
+    if ( Id == null ) return;
+    stack.push( modelViewMatrix );
+    modelViewMatrix = mult( modelViewMatrix, figure[Id].transform );
+    figure[Id].render();
+    if ( figure[Id].child != null ) traverse( figure[Id].child );
     modelViewMatrix = stack.pop();
-   if(figure[Id].sibling != null) traverse(figure[Id].sibling);
+    if ( figure[Id].sibling != null ) traverse( figure[Id].sibling );
 }
 
 

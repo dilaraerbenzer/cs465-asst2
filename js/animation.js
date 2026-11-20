@@ -9,8 +9,8 @@
 //    - the global position/orientation is the root (thorax) node's
 //      position/theta instead of a separate array
 //    - the presets were rewritten for the moth's joints (tripod gait at the
-//      hips, knees and feet fold while a leg is lifted; flapping about the body axis
-//      for the wings)
+//      hips, with knees and feet folding while a leg is lifted; wings flap
+//      about the body axis) and a twerk preset was added
 //
 
 "use strict";

@@ -12,21 +12,30 @@ the app loads (`models/moth.obj` + `models/moth.rig.json`):
 * finds every joint automatically: the pivot of a part is the centre of the
   vertices where it touches its parent.
 
-Hierarchy: `thorax` -> `head` (-> `antenna_L`, `antenna_R`), `abdomen`,
-`wing_L`, `wing_R`, `leg_{front,mid,hind}_{L,R}`.
+Hierarchy (26 parts):
 
-Each leg is still one piece, and each wing has its fore- and hindwing fused.
-For more joints (better model-complexity grade), split the legs at the knee in
-Blender (Edit mode, X-ray, box-select the lower half, P -> Selection), export
-again as `models/moth_tripo.obj`, add the new parts to `PARTS` (e.g.
-`leg_front_lower_L` with parent `leg_front_L`) and re-run:
+```
+thorax
+├── head ── antenna_L, antenna_R
+├── abdomen ── abdomen_tip
+├── wing_L, wing_R
+└── leg_{front,mid,hind}_{L,R}
+    └── leg_<pos>_lower_<side>
+        └── leg_<pos>_foot_<side>
+```
+
+Each wing still has its fore- and hindwing fused. To split off another part,
+do it in Blender (Edit mode, X-ray, box-select, P -> Selection), export again
+as `models/moth_tripo.obj`, add the new part to `PARTS` and re-run:
 
 ```bash
 python3 tools/rig_from_tripo.py
 ```
 
-The rest of this file is the from-scratch Blender workflow.
-
+The rest of this file is the older from-scratch Blender workflow
+(`tools/blender_export_rig.py`). It uses its own part names (`forewing_L`,
+`leg_front_upper_L`, ...), so the animation presets would need updating if
+you went back to it.
 
 The app loads two files:
 
@@ -35,9 +44,8 @@ The app loads two files:
 | `models/moth.obj` | the geometry, one `o <name>` block per movable part |
 | `models/moth.rig.json` | each part's parent, pivot (joint position) and colour |
 
-Right now these are a **placeholder** moth made from primitives by
-`tools/make_placeholder_moth.py`. Replace them with the Blender export and
-nothing else needs to change, as long as the rules below are followed.
+`tools/make_placeholder_moth.py` writes a primitive placeholder moth in the
+same format, which is handy for testing the app without a real model.
 
 ## Rules for the .blend file
 
@@ -96,8 +104,8 @@ nothing else needs to change, as long as the rules below are followed.
    python3 -m http.server 8000
    ```
 
-   then go to http://localhost:8000. Pick parts in the **Rig check** panel and
-   drag the sliders, or tick *Wiggle all joints*. Every part should rotate
+   then go to http://localhost:8000. Pick parts in the part list and
+   drag the joint sliders. Every part should rotate
    around its own joint and carry its children with it. If a part swings
    around the wrong point, its origin is wrong in Blender (rule 3). If it
    doesn't follow its parent, its parenting is wrong (rule 4).

@@ -13,8 +13,7 @@
         0.08,
         0.18
       ],
-      "source": "tripo_part_4",
-      "texture": "textures/tripo_part_4_basecolor.jpg"
+      "texture": "textures/thorax.jpg"
     },
     {
       "name": "head",
@@ -29,8 +28,7 @@
         0.06,
         0.08
       ],
-      "source": "tripo_part_5",
-      "texture": "textures/tripo_part_5_basecolor.jpg"
+      "texture": "textures/head.jpg"
     },
     {
       "name": "antenna_L",
@@ -45,8 +43,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_6",
-      "texture": "textures/tripo_part_6_basecolor.jpg"
+      "texture": "textures/antenna_L.jpg"
     },
     {
       "name": "antenna_R",
@@ -61,8 +58,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_12",
-      "texture": "textures/tripo_part_12_basecolor.jpg"
+      "texture": "textures/antenna_R.jpg"
     },
     {
       "name": "abdomen",
@@ -77,8 +73,7 @@
         0.12,
         0.3
       ],
-      "source": "tripo_part_1",
-      "texture": "textures/tripo_part_1_basecolor.jpg"
+      "texture": "textures/abdomen.jpg"
     },
     {
       "name": "abdomen_tip",
@@ -93,8 +88,7 @@
         0.12,
         0.3
       ],
-      "source": "tripo_part_1.001",
-      "texture": "textures/tripo_part_1_basecolor.jpg"
+      "texture": "textures/abdomen.jpg"
     },
     {
       "name": "wing_L",
@@ -109,8 +103,7 @@
         0.06,
         0.08
       ],
-      "source": "tripo_part_3",
-      "texture": "textures/tripo_part_3_basecolor.jpg"
+      "texture": "textures/wing_L.jpg"
     },
     {
       "name": "wing_R",
@@ -125,8 +118,7 @@
         0.06,
         0.08
       ],
-      "source": "tripo_part_2",
-      "texture": "textures/tripo_part_2_basecolor.jpg"
+      "texture": "textures/wing_R.jpg"
     },
     {
       "name": "leg_front_L",
@@ -141,8 +133,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_9",
-      "texture": "textures/tripo_part_9_basecolor.jpg"
+      "texture": "textures/leg_front_L.jpg"
     },
     {
       "name": "leg_front_R",
@@ -157,8 +148,7 @@
         0.76,
         0.7
       ],
-      "source": "front_upper_leg",
-      "texture": "textures/tripo_part_7_basecolor.jpg"
+      "texture": "textures/leg_front_R.jpg"
     },
     {
       "name": "leg_mid_L",
@@ -173,8 +163,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_10",
-      "texture": "textures/tripo_part_10_basecolor.jpg"
+      "texture": "textures/leg_mid_L.jpg"
     },
     {
       "name": "leg_mid_R",
@@ -189,8 +178,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_11",
-      "texture": "textures/tripo_part_11_basecolor.jpg"
+      "texture": "textures/leg_mid_R.jpg"
     },
     {
       "name": "leg_hind_L",
@@ -205,8 +193,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_0",
-      "texture": "textures/tripo_part_0_basecolor.jpg"
+      "texture": "textures/leg_hind_L.jpg"
     },
     {
       "name": "leg_hind_R",
@@ -221,8 +208,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_8",
-      "texture": "textures/tripo_part_8_basecolor.jpg"
+      "texture": "textures/leg_hind_R.jpg"
     },
     {
       "name": "leg_front_lower_L",
@@ -237,8 +223,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_9.001",
-      "texture": "textures/tripo_part_9_basecolor.jpg",
+      "texture": "textures/leg_front_L.jpg",
       "axes": [
         [
           -0.94364,
@@ -270,8 +255,7 @@
         0.76,
         0.7
       ],
-      "source": "lower_front_leg_R",
-      "texture": "textures/tripo_part_7_basecolor.jpg",
+      "texture": "textures/leg_front_R.jpg",
       "axes": [
         [
           -0.93388,
@@ -303,8 +287,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_10.001",
-      "texture": "textures/tripo_part_10_basecolor.jpg",
+      "texture": "textures/leg_mid_L.jpg",
       "axes": [
         [
           0.59535,
@@ -336,8 +319,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_11.001",
-      "texture": "textures/tripo_part_11_basecolor.jpg",
+      "texture": "textures/leg_mid_R.jpg",
       "axes": [
         [
           0.717,
@@ -369,8 +351,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_0.001",
-      "texture": "textures/tripo_part_0_basecolor.jpg",
+      "texture": "textures/leg_hind_L.jpg",
       "axes": [
         [
           0.82619,
@@ -402,8 +383,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_8.001",
-      "texture": "textures/tripo_part_8_basecolor.jpg",
+      "texture": "textures/leg_hind_R.jpg",
       "axes": [
         [
           0.84982,
@@ -435,8 +415,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_9.002",
-      "texture": "textures/tripo_part_9_basecolor.jpg",
+      "texture": "textures/leg_front_L.jpg",
       "axes": [
         [
           -0.99853,
@@ -468,8 +447,7 @@
         0.76,
         0.7
       ],
-      "source": "lower_front_leg_R.001",
-      "texture": "textures/tripo_part_7_basecolor.jpg",
+      "texture": "textures/leg_front_R.jpg",
       "axes": [
         [
           -0.94344,
@@ -501,8 +479,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_10.002",
-      "texture": "textures/tripo_part_10_basecolor.jpg",
+      "texture": "textures/leg_mid_L.jpg",
       "axes": [
         [
           0.18688,
@@ -534,8 +511,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_11.002",
-      "texture": "textures/tripo_part_11_basecolor.jpg",
+      "texture": "textures/leg_mid_R.jpg",
       "axes": [
         [
           -0.29492,
@@ -567,8 +543,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_0.002",
-      "texture": "textures/tripo_part_0_basecolor.jpg",
+      "texture": "textures/leg_hind_L.jpg",
       "axes": [
         [
           0.82335,
@@ -600,8 +575,7 @@
         0.76,
         0.7
       ],
-      "source": "tripo_part_8.002",
-      "texture": "textures/tripo_part_8_basecolor.jpg",
+      "texture": "textures/leg_hind_R.jpg",
       "axes": [
         [
           0.58731,

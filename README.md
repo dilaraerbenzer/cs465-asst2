@@ -32,7 +32,7 @@ Code reused from the book is marked at the top of each file, with what we change
 
 ## Features
 
-* **Part 1, model:** a moth generated with Tripo and segmented in Blender
+* **Part 1, model:** a moth model segmented in Blender
   into 26 parts (head, antennae, abdomen + tip, wings, 6 legs x
   upper/lower/foot), arranged in a `figure.js`-style tree.
 * **Part 2, rendering:** colour / unlit texture / smooth shading / shaded

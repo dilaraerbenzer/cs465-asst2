@@ -53,8 +53,9 @@ var position = [];        // Id -> vec3, extra translation          (global posi
 //    abdomen   x: curl (+ = up)    y: sway sideways         z: twist
 //    wing      x: twist            y: sweep forward/back    z: flap (+ = up)
 //    leg (hip) x: twist            y: swing (- = forward)   z: lift (+ = up)
-//    knee      x: bend (- = fold)  y: twist                 z: sideways
-//              (lower leg parts, "leg_<pos>_lower_<side>")
+//    knee/foot x: bend (- = fold)  y: twist                 z: sideways
+//              (lower legs "leg_<pos>_lower_<side>", feet "leg_<pos>_foot_<side>";
+//              these rotate in their own joint frame, see jointAxes below)
 //  The root (thorax) is the global orientation and is not limited.
 //  A part can also get its own "limits" in moth.rig.json.
 //
@@ -66,14 +67,16 @@ var jointLimitTable = [
     [ "wing",     [ [ -20, 20 ], [ -30, 20 ], [ -30, 70 ] ] ],
     [ "leg",      [ [ -15, 15 ], [ -40, 40 ], [ -20, 40 ] ] ],
 ];
-var kneeLimits = [ [ -60, 25 ], [ -10, 10 ], [ -15, 15 ] ];
+var kneeLimits = [ [ -60, 15 ], [ -10, 10 ], [ -15, 15 ] ];
+var footLimits = [ [ -40, 30 ], [ -10, 10 ], [ -10, 10 ] ];
 var defaultLimits = [ [ -45, 45 ], [ -45, 45 ], [ -45, 45 ] ];
 var jointLimits = [];       // Id -> limits, or null (no limits)
 var jointLimitsOn = true;
 
 function limitsFor( name ) {
     var lim = defaultLimits;
-    if ( name.indexOf( "_lower" ) >= 0 ) lim = kneeLimits;
+    if ( name.indexOf( "_foot" ) >= 0 ) lim = footLimits;
+    else if ( name.indexOf( "_lower" ) >= 0 ) lim = kneeLimits;
     else for ( var i = 0; i < jointLimitTable.length; ++i )
         if ( name.indexOf( jointLimitTable[i][0] ) == 0 ) { lim = jointLimitTable[i][1]; break; }
     if ( name.slice( -2 ) == "_R" )      // mirror y and z for the right side
@@ -93,6 +96,24 @@ function clampJoint( Id ) {
 function setJointLimitsOn( on ) {
     jointLimitsOn = on;
     for ( var Id = 0; Id < numNodes; ++Id ) initNodes( Id );
+}
+
+//
+//  Joint frames. Knees and feet do not bend about a model axis (the legs
+//  point in different directions), so moth.rig.json gives them "axes": the
+//  joint's own x (hinge), y (along the segment) and z directions, computed by
+//  tools/rig_from_tripo.py. The rotations are applied in that frame:
+//      A * Rz * Ry * Rx * A^-1      (A = matrix with the axes as columns)
+//  so theta x always bends the joint. Other parts use the model axes.
+//
+var jointAxes = [];       // Id -> { A: mat4, Ainv: mat4 } or null
+
+function makeJointAxes( axes ) {
+    var x = axes[0], y = axes[1], z = axes[2];
+    return {
+        A:    mat4( x[0], y[0], z[0], 0,  x[1], y[1], z[1], 0,  x[2], y[2], z[2], 0,  0, 0, 0, 1 ),
+        Ainv: mat4( x[0], x[1], x[2], 0,  y[0], y[1], y[2], 0,  z[0], z[1], z[2], 0,  0, 0, 0, 1 )  // orthonormal: inverse = transpose
+    };
 }
 
 var stack = [];
@@ -118,9 +139,11 @@ function initNodes( Id ) {
     var m = translate( offset[Id][0] + position[Id][0],
                        offset[Id][1] + position[Id][1],
                        offset[Id][2] + position[Id][2] );
+    if ( jointAxes[Id] ) m = mult( m, jointAxes[Id].A );
     m = mult( m, rotate( theta[Id][2], [ 0, 0, 1 ] ) );
     m = mult( m, rotate( theta[Id][1], [ 0, 1, 0 ] ) );
     m = mult( m, rotate( theta[Id][0], [ 1, 0, 0 ] ) );
+    if ( jointAxes[Id] ) m = mult( m, jointAxes[Id].Ainv );
     figure[Id].transform = m;
 }
 
@@ -156,6 +179,7 @@ function buildMoth( gl, rig, objParts, drawPart ) {
         partTextureFile[Id] = p.texture || null;
         partTexture[Id] = null;
         jointLimits[Id] = p.limits || ( p.parent == null ? null : limitsFor( p.name ) );
+        jointAxes[Id] = p.axes ? makeJointAxes( p.axes ) : null;
         theta[Id] = vec3( 0, 0, 0 );
         position[Id] = vec3( 0, 0, 0 );
     }

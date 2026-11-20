@@ -37,7 +37,8 @@ Code reused from the book is marked at the top of each file, with what we change
 
 ## Features
 
-* **Part 1, model:** segmented Tripo moth, 13 parts, `figure.js`-style tree.
+* **Part 1, model:** segmented Tripo moth, 26 parts (head, antennae, abdomen +
+  tip, wings, 6 legs x upper/lower/foot), `figure.js`-style tree.
 * **Part 2, rendering:** colour / unlit texture / smooth shading / shaded texture,
   plus a cube-map skybox background (gothic night sky).
 * **Part 3, animation:** add/update/delete keyframes, linear interpolation of

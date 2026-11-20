@@ -9,7 +9,7 @@
 //    - the global position/orientation is the root (thorax) node's
 //      position/theta instead of a separate array
 //    - the presets were rewritten for the moth's joints (tripod gait at the
-//      hips, knees fold while a leg is lifted; flapping about the body axis
+//      hips, knees and feet fold while a leg is lifted; flapping about the body axis
 //      for the wings)
 //
 
@@ -81,11 +81,13 @@ function presetWalk() {
             var name = partName[Id];
             if ( name.indexOf( "leg_" ) != 0 ) continue;
             var s = sideOf( name );
-            var hip = name.replace( "_lower", "" );       // lower leg follows its upper leg's phase
+            var hip = name.replace( "_lower", "" ).replace( "_foot", "" );   // follow the upper leg's phase
             var p = ph + ( groupA[hip] ? 0 : Math.PI );
             var forward = Math.sin( p );                  // +1 = foot forward
             var lift = Math.max( 0, Math.cos( p ) );      // lifted while moving forward
-            if ( name.indexOf( "_lower" ) >= 0 )
+            if ( name.indexOf( "_foot" ) >= 0 )
+                setJoint( pose, name, [ -20 * lift, 0, 0 ] );                 // foot curls while lifted
+            else if ( name.indexOf( "_lower" ) >= 0 )
                 setJoint( pose, name, [ -35 * lift + 8 * forward, 0, 0 ] );   // knee folds while lifted
             else
                 setJoint( pose, name, [ 0, -s * 26 * forward, s * 22 * lift ] );
@@ -93,6 +95,7 @@ function presetWalk() {
         setJoint( pose, "thorax", [ 0, 0, 3 * Math.sin( 2 * ph ) ], [ 0, 0.02 * Math.abs( Math.sin( ph ) ), 0 ] );
         setJoint( pose, "head", [ 0, 6 * Math.sin( ph ), 0 ] );
         setJoint( pose, "abdomen", [ 4 * Math.sin( 2 * ph ), -4 * Math.sin( ph ), 0 ] );
+        setJoint( pose, "abdomen_tip", [ 3 * Math.sin( 2 * ph + 1 ), -3 * Math.sin( ph + 1 ), 0 ] );
         setJoint( pose, "antenna_L", [ 8 * Math.sin( 2 * ph ), 0, 0 ] );
         setJoint( pose, "antenna_R", [ 8 * Math.sin( 2 * ph + 1 ), 0, 0 ] );
         result.push( pose );
@@ -109,11 +112,13 @@ function presetFly() {
         for ( var Id = 0; Id < numNodes; ++Id ) {
             var name = partName[Id], s = sideOf( name );
             if ( name.indexOf( "wing" ) >= 0 ) setJoint( pose, name, [ 0, 0, s * ( 15 + 45 * Math.sin( ph ) ) ] );
+            else if ( name.indexOf( "_foot" ) >= 0 ) setJoint( pose, name, [ -30, 0, 0 ] );    // feet curled
             else if ( name.indexOf( "_lower" ) >= 0 ) setJoint( pose, name, [ -45, 0, 0 ] );   // knees folded
             else if ( name.indexOf( "leg_" ) == 0 ) setJoint( pose, name, [ 0, s * 25, s * 20 ] );
         }
         setJoint( pose, "thorax", [ -12, 0, 0 ], [ 0, 0.35 + 0.1 * Math.sin( ph ), 0 ] );
         setJoint( pose, "abdomen", [ 6 * Math.sin( ph + 1 ), 0, 0 ] );
+        setJoint( pose, "abdomen_tip", [ 8 * Math.sin( ph + 2 ), 0, 0 ] );
         setJoint( pose, "antenna_L", [ -10, 0, 0 ] );
         setJoint( pose, "antenna_R", [ -10, 0, 0 ] );
         result.push( pose );

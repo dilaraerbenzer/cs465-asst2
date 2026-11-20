@@ -127,6 +127,34 @@ function presetFly() {
 }
 
 
+// Twerk: body tilted nose-down with the abdomen raised, squatting on bent
+// legs, the abdomen bouncing twice per cycle with the tip whipping behind it,
+// head glancing back, wings half-raised and fluttering. 8 keyframes per cycle.
+function presetTwerk() {
+    var N = 8, result = [];
+    for ( var i = 0; i < N; ++i ) {
+        var pose = restPose(), ph = i / N * 2 * Math.PI;
+        var bounce = Math.sin( 2 * ph );                    // two bounces per cycle
+        for ( var Id = 0; Id < numNodes; ++Id ) {
+            var name = partName[Id], s = sideOf( name );
+            if ( name.indexOf( "wing" ) >= 0 ) setJoint( pose, name, [ 0, 0, s * ( 20 + 8 * Math.sin( 4 * ph ) ) ] );
+            else if ( name.indexOf( "_foot" ) >= 0 ) setJoint( pose, name, [ -15, 0, 0 ] );
+            else if ( name.indexOf( "_lower" ) >= 0 ) setJoint( pose, name, [ -30 - 6 * bounce, 0, 0 ] );  // squat
+            else if ( name.indexOf( "leg_hind" ) == 0 ) setJoint( pose, name, [ 0, s * 10, s * 12 ] );     // hind legs spread
+            else if ( name.indexOf( "leg_front" ) == 0 ) setJoint( pose, name, [ 0, -s * 12, 0 ] );        // front legs reach forward
+        }
+        setJoint( pose, "thorax", [ 14, 6 * Math.sin( ph ), 0 ], [ 0, -0.06 + 0.03 * Math.abs( bounce ), 0 ] );
+        setJoint( pose, "abdomen", [ 10 + 15 * bounce, 5 * Math.sin( ph ), 0 ] );
+        setJoint( pose, "abdomen_tip", [ 12 * Math.sin( 2 * ph - 0.9 ), 0, 0 ] );
+        setJoint( pose, "head", [ -10, 20, 5 * Math.sin( 2 * ph ) ] );               // looking back over the shoulder
+        setJoint( pose, "antenna_L", [ 10 * bounce, 0, 0 ] );
+        setJoint( pose, "antenna_R", [ 10 * Math.sin( 2 * ph + 0.5 ), 0, 0 ] );
+        result.push( pose );
+    }
+    return result;
+}
+
+
 //
 //  Save / load (JSON file with the frame time and every keyframe pose)
 //

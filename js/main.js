@@ -513,6 +513,7 @@ function setupUI() {
     };
     $( "presetWalk" ).onclick = function () { usePreset( presetWalk(), 0.08 ); };
     $( "presetFly" ).onclick = function () { usePreset( presetFly(), 0.05 ); };
+    $( "presetTwerk" ).onclick = function () { usePreset( presetTwerk(), 0.07 ); };
 
     // Save / load
     $( "saveButton" ).onclick = function () {

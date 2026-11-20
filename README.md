@@ -42,7 +42,7 @@ Code reused from the book is marked at the top of each file, with what we change
 * **Part 2, rendering:** colour / unlit texture / smooth shading / shaded texture,
   plus a cube-map skybox background (gothic night sky).
 * **Part 3, animation:** add/update/delete keyframes, linear interpolation of
-  every joint, play/loop, frame time, presets (walk, fly), save/load JSON.
+  every joint, play/loop, frame time, presets (walk, fly, twerk), save/load JSON.
 * **Part 4, posture and camera:** click a part to select it, drag it to rotate
   its joint (Alt+drag: z axis), joint sliders, global position/orientation
   sliders; orbit (drag), pan (right-drag or Shift+drag), zoom (wheel).

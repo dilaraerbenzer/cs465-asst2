@@ -68,7 +68,7 @@ window.onload = function init() {
     gl = ( typeof WebGLUtils !== "undefined" ) ? WebGLUtils.setupWebGL( canvas ) : canvas.getContext( "webgl" );
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
-    gl.clearColor( 0.11, 0.1, 0.13, 1.0 );
+    gl.clearColor( 0.55, 0.52, 0.6, 1.0 );
     gl.enable( gl.DEPTH_TEST );
 
     //
@@ -308,7 +308,7 @@ function drawScene( picking ) {
     gl.uniformMatrix4fv( projectionMatrixLoc, false, flatten( projectionMatrix ) );
 
     if ( picking ) gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
-    else gl.clearColor( 0.11, 0.1, 0.13, 1.0 );
+    else gl.clearColor( 0.55, 0.52, 0.6, 1.0 );
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 
     var eye = vec3(

@@ -26,10 +26,11 @@ Then open http://localhost:8000.
 | `models/source/moth.obj` | source model exported from Blender (Tripo, segmented) |
 | `models/textures/` | one base-colour texture per Tripo part |
 | `models/skybox/` | six cube-map faces of the night-sky background |
-| `tools/make_skybox.py` | generates the skybox images (replace them to use your own) |
+| `models/ground.jpg` | tileable forest-floor texture for the ground plane |
 | `tools/rig_moth.py` | renames/turns the source parts, finds the joints, writes `moth.obj` + `moth.rig.json` |
+| `tools/make_skybox.py`, `tools/make_ground.py` | generate the skybox and ground images |
 | `tools/blender_export_rig.py` | Blender script for the older from-scratch export workflow |
-| `docs/MODELING.md` | how to build and export the moth in Blender |
+| `docs/MODELING.md` | how the model was made and how the hierarchy works |
 
 Code reused from the book is marked at the top of each file, with what we changed.
 
@@ -38,7 +39,8 @@ Code reused from the book is marked at the top of each file, with what we change
 * **Part 1, model:** segmented Tripo moth, 26 parts (head, antennae, abdomen +
   tip, wings, 6 legs x upper/lower/foot), `figure.js`-style tree.
 * **Part 2, rendering:** colour / unlit texture / smooth shading / shaded texture,
-  plus a cube-map skybox background (gothic night sky).
+  plus a cube-map skybox background (gothic night sky) and a textured forest-floor
+  ground with a soft shadow under the moth, fading into the sky with distance.
 * **Part 3, animation:** add/update/delete keyframes, linear interpolation of
   every joint, play/loop, frame time, presets (walk, fly, twerk), save/load JSON.
 * **Part 4, posture and camera:** click a part to select it, drag it to rotate

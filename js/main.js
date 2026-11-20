@@ -53,6 +53,9 @@ var skyProgram, skyBuffer, skyPositionLoc, skyViewMatrixLoc, skyProjectionLoc;
 var cubeMap = null;
 var skyFaces = [ "px", "nx", "py", "ny", "pz", "nz" ];
 
+// Ground (third shader program)
+var groundProgram, groundBuffer, groundTexture = null, groundLoc = {};
+
 var renderMode = 3;
 var selectedId = 0;
 var showSelection = false;   // no highlight until the user selects a part
@@ -97,6 +100,7 @@ window.onload = function init() {
     gl.uniform1i( gl.getUniformLocation( program, "texture" ), 0 );
 
     setupSkybox();
+    setupGround();
     setupMouse();
 
     //
@@ -293,6 +297,80 @@ function drawSky( eye ) {
 
 
 //
+//  Ground: one big square (80 x 80 units) in the xz plane, drawn at the
+//  height of the moth's feet (groundY, found when the model is loaded).
+//  Texture from models/ground.jpg (tools/make_ground.py), repeated.
+//
+function setupGround() {
+
+    groundProgram = initShaders( gl, "ground-vertex-shader", "ground-fragment-shader" );
+    groundLoc.vPosition = gl.getAttribLocation( groundProgram, "vPosition" );
+    [ "viewMatrix", "projectionMatrix", "groundY", "groundTex", "skyMap", "useSky", "fogColor",
+      "eye", "tileSize", "shadowCenter", "shadowDir", "shadowStrength", "shadowSize" ].forEach( function ( n ) {
+        groundLoc[n] = gl.getUniformLocation( groundProgram, n );
+    } );
+
+    var S = 40.0;
+    var pointsArray = [ vec4( -S, 0, -S, 1 ), vec4( S, 0, -S, 1 ), vec4( S, 0, S, 1 ),
+                        vec4( -S, 0, -S, 1 ), vec4( S, 0, S, 1 ), vec4( -S, 0, S, 1 ) ];
+    groundBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, groundBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten( pointsArray ), gl.STATIC_DRAW );
+
+    var image = new Image();
+    image.onload = function () {
+        groundTexture = configureTexture( image );       // repeats (WebGL default wrap mode)
+        // sharper texture at grazing angles, if the browser supports it
+        var aniso = gl.getExtension( "EXT_texture_filter_anisotropic" ) ||
+                    gl.getExtension( "WEBKIT_EXT_texture_filter_anisotropic" );
+        if ( aniso ) gl.texParameterf( gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT,
+                                       Math.min( 8, gl.getParameter( aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT ) ) );
+    };
+    image.src = "models/ground.jpg";
+}
+
+function drawGround( eye, viewMatrix ) {
+
+    gl.useProgram( groundProgram );
+    gl.uniformMatrix4fv( groundLoc.projectionMatrix, false, flatten( projectionMatrix ) );
+    gl.uniformMatrix4fv( groundLoc.viewMatrix, false, flatten( viewMatrix ) );
+    gl.uniform1f( groundLoc.groundY, groundY - 0.005 );
+    gl.uniform3fv( groundLoc.eye, flatten( eye ) );
+    gl.uniform1f( groundLoc.tileSize, 3.0 );
+
+    var sky = cubeMap && document.getElementById( "skyboxOn" ).checked;
+    gl.uniform1f( groundLoc.useSky, sky ? 1.0 : 0.0 );
+    gl.uniform3fv( groundLoc.fogColor, flatten( vec3( 0.44, 0.49, 0.40 ) ) );
+
+    // shadow follows the moth's global position and heading (root node);
+    // it gets bigger and lighter as the moth rises
+    var p = position[rootId], yaw = radians( theta[rootId][1] );
+    var height = Math.max( 0, p[1] );
+    gl.uniform2fv( groundLoc.shadowCenter, flatten( vec2( p[0], p[2] ) ) );
+    gl.uniform2fv( groundLoc.shadowDir, flatten( vec2( Math.sin( yaw ), Math.cos( yaw ) ) ) );
+    gl.uniform1f( groundLoc.shadowSize, 1.0 + 0.6 * height );
+    gl.uniform1f( groundLoc.shadowStrength, 0.6 / ( 1.0 + 1.5 * height ) );
+
+    gl.uniform1i( groundLoc.groundTex, 1 );
+    gl.activeTexture( gl.TEXTURE1 );
+    gl.bindTexture( gl.TEXTURE_2D, groundTexture );
+    gl.uniform1i( groundLoc.skyMap, 2 );
+    gl.activeTexture( gl.TEXTURE2 );
+    gl.bindTexture( gl.TEXTURE_CUBE_MAP, cubeMap );
+    gl.activeTexture( gl.TEXTURE0 );
+
+    if ( vNormal >= 0 ) gl.disableVertexAttribArray( vNormal );
+    if ( vTexCoord >= 0 ) gl.disableVertexAttribArray( vTexCoord );
+    gl.bindBuffer( gl.ARRAY_BUFFER, groundBuffer );
+    gl.vertexAttribPointer( groundLoc.vPosition, 4, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( groundLoc.vPosition );
+    gl.drawArrays( gl.TRIANGLES, 0, 6 );
+
+    gl.useProgram( program );
+}
+
+
+//
 //  Draw the scene (normal pass, or the picking pass with id colours).
 //
 function drawScene( picking ) {
@@ -319,6 +397,8 @@ function drawScene( picking ) {
     if ( !picking && cubeMap && document.getElementById( "skyboxOn" ).checked ) drawSky( eye );
 
     modelViewMatrix = lookAt( eye, vec3( at[0], at[1], at[2] ), vec3( up[0], up[1], up[2] ) );
+    if ( !picking && groundTexture && numNodes && document.getElementById( "groundOn" ).checked )
+        drawGround( eye, modelViewMatrix );
     pickingPass = picking;
     traverse( rootId );
     pickingPass = false;
@@ -384,7 +464,9 @@ function setupMouse() {
             syncUI();
         } else if ( drag == "orbit" ) {
             camTheta -= dx * 0.4;
-            camPhi = Math.max( -89, Math.min( 89, camPhi + dy * 0.4 ) );
+            // with the ground on, the camera stays above it
+            var minPhi = document.getElementById( "groundOn" ).checked ? 2 : -89;
+            camPhi = Math.max( minPhi, Math.min( 89, camPhi + dy * 0.4 ) );
         } else {
             var s = radius * 0.0016;
             at[0] -= Math.cos( radians( camTheta ) ) * dx * s;

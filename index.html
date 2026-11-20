@@ -132,6 +132,62 @@ void main()
 }
 </script>
 
+<!--
+  Ground shaders (our own): a large textured plane at the moth's feet.
+  The texture repeats every tileSize units; a soft elliptical shadow is
+  darkened in under the moth; in the distance the ground fades into the sky
+  (the fog colour is looked up in the skybox in the same view direction, so
+  there is no visible edge where the plane ends).
+-->
+<script id="ground-vertex-shader" type="x-shader/x-vertex">
+
+attribute vec4 vPosition;
+varying vec3 worldPos;
+uniform mat4 viewMatrix;
+uniform mat4 projectionMatrix;
+uniform float groundY;
+
+void main()
+{
+    worldPos = vec3(vPosition.x, groundY, vPosition.z);
+    gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+}
+</script>
+
+<script id="ground-fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+varying vec3 worldPos;
+uniform sampler2D groundTex;
+uniform samplerCube skyMap;
+uniform float useSky;
+uniform vec3 fogColor;
+uniform vec3 eye;
+uniform float tileSize;
+uniform vec2 shadowCenter;
+uniform vec2 shadowDir;          // moth's forward direction on the ground
+uniform float shadowStrength;
+uniform float shadowSize;
+
+void main()
+{
+    vec3 c = texture2D(groundTex, worldPos.xz / tileSize).rgb * 1.35;
+
+    // soft elliptical shadow under the moth (longer along its body)
+    vec2 d = worldPos.xz - shadowCenter;
+    float along  = dot(d, shadowDir) / (1.5 * shadowSize);
+    float across = dot(d, vec2(-shadowDir.y, shadowDir.x)) / (1.0 * shadowSize);
+    c *= 1.0 - shadowStrength * exp(-2.5 * (along * along + across * across));
+
+    // fade into the sky in the distance
+    vec3 view = worldPos - eye;
+    float f = smoothstep(5.0, 22.0, length(view));
+    vec3 fog = useSky > 0.5 ? textureCube(skyMap, normalize(view)).rgb : fogColor;
+    gl_FragColor = vec4(mix(c, fog, f), 1.0);
+}
+</script>
+
 <script type="text/javascript" src="Common/webgl-utils.js"></script>
 <script type="text/javascript" src="Common/initShaders.js"></script>
 <script type="text/javascript" src="Common/MV.js"></script>
@@ -174,6 +230,7 @@ Oops ... your browser doesn't support the HTML5 canvas element
     <option value="3" selected>Smooth shading + texture</option>
   </select>
   <div><input id="skyboxOn" type="checkbox" checked> night-sky background (skybox)</div>
+  <div><input id="groundOn" type="checkbox" checked> forest-floor ground</div>
 
   <h3>Selected part: <span id="selName">thorax</span></h3>
   <select id="partSelect" size="14"></select>

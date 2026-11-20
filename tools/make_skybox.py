@@ -4,7 +4,7 @@ Generates a gothic night-sky skybox: six cube-map faces in models/skybox/
 (px, nx, py, ny, pz, nz .jpg). Every pixel's colour is computed from its 3D
 view direction, so the faces join without seams.
 
-Contents: twilight purple gradient, stars, a full moon with a halo, violet mist
+Contents: murky green twilight gradient, stars, a full moon with a halo, violet mist
 at the horizon, and a black horizon silhouette (hills, cathedral spires,
 bare dead trees).
 
@@ -103,10 +103,10 @@ def sky_color(d):
     el = np.arcsin(np.clip(y, -1, 1))
     az = np.arctan2(x, -z)
 
-    # twilight: light enough that the dark moth stands out against it
-    zenith = np.array([0.16, 0.12, 0.30])
-    upper = np.array([0.38, 0.28, 0.52])
-    horizon = np.array([0.72, 0.56, 0.70])
+    # murky swamp-green twilight, light enough that the dark moth stands out against it
+    zenith = np.array([0.07, 0.12, 0.10])
+    upper = np.array([0.20, 0.29, 0.23])
+    horizon = np.array([0.58, 0.63, 0.42])
     t = smoothstep(0.0, 0.9, el)[..., None]
     col = horizon * (1 - smoothstep(0.0, 0.35, el)[..., None]) + upper * smoothstep(0.0, 0.35, el)[..., None]
     col = col * (1 - t) + zenith * t
@@ -132,21 +132,21 @@ def sky_color(d):
     for cx, cy, r, depth in MARIA:
         mare += depth * np.exp(-((mu - cx) ** 2 + (mv - cy) ** 2) / (r * r))
     moon_col = np.array([0.93, 0.90, 0.84])[None, None, :] * (0.9 - mare[..., None])
-    halo = np.exp(-ang / 0.09)[..., None] * np.array([0.35, 0.28, 0.42])
+    halo = np.exp(-ang / 0.09)[..., None] * np.array([0.28, 0.34, 0.20])
     col = col + halo
     col = col * (1 - disk[..., None]) + moon_col * disk[..., None]
 
     # violet mist low on the horizon
-    mist = np.exp(-np.abs(el - 0.03) / 0.06)[..., None] * np.array([0.12, 0.08, 0.12])
+    mist = np.exp(-np.abs(el - 0.03) / 0.06)[..., None] * np.array([0.10, 0.12, 0.05])
     col += mist
 
     # black silhouette and dark ground
     ground = el < 0
-    # misty lavender-grey ground, lighter towards the horizon
+    # misty grey-green ground, lighter towards the horizon
     gt = np.exp(el[ground] / 0.25)[..., None]
-    col[ground] = np.array([0.30, 0.26, 0.34]) * (1 - gt) + np.array([0.55, 0.47, 0.58]) * gt
+    col[ground] = np.array([0.22, 0.26, 0.21]) * (1 - gt) + np.array([0.44, 0.49, 0.38]) * gt
     sil = silhouette(az, el) & ~ground
-    col[sil] = np.array([0.08, 0.05, 0.10])
+    col[sil] = np.array([0.04, 0.07, 0.05])
     return np.clip(col, 0, 1)
 
 

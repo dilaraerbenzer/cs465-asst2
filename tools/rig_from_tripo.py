@@ -29,23 +29,34 @@ PLUM = [0.28, 0.12, 0.30]
 BONE = [0.80, 0.76, 0.70]
 VELVET = [0.16, 0.08, 0.18]
 
-# tripo object -> (our name, parent, colour). Parents must come first.
+# (Blender object name(s), our name, parent, colour, texture of tripo part).
+# Several object names separated by "|" are alternatives (whichever is in the
+# file is used). Parents must come first. Parts missing from the file are
+# skipped, so legs can be split one at a time.
 # Identified from the part positions: in moth_tripo.obj the head points to -X,
 # up is +Y and the moth's left side is +Z.
+# Split legs: the upper part keeps the leg's name (leg_front_R ...), the
+# lower part is leg_<pos>_lower_<side> with the upper part as its parent.
 PARTS = [
-    ("tripo_part_4",  "thorax",        None,     VELVET),
-    ("tripo_part_5",  "head",          "thorax", BLACK),
-    ("tripo_part_6",  "antenna_L",     "head",   BONE),
-    ("tripo_part_12", "antenna_R",     "head",   BONE),
-    ("tripo_part_1",  "abdomen",       "thorax", PLUM),
-    ("tripo_part_3",  "wing_L",        "thorax", BLACK),
-    ("tripo_part_2",  "wing_R",        "thorax", BLACK),
-    ("tripo_part_9",  "leg_front_L",   "thorax", BONE),
-    ("tripo_part_7",  "leg_front_R",   "thorax", BONE),
-    ("tripo_part_10", "leg_mid_L",     "thorax", BONE),
-    ("tripo_part_11", "leg_mid_R",     "thorax", BONE),
-    ("tripo_part_0",  "leg_hind_L",    "thorax", BONE),
-    ("tripo_part_8",  "leg_hind_R",    "thorax", BONE),
+    ("tripo_part_4",  "thorax",      None,     VELVET, 4),
+    ("tripo_part_5",  "head",        "thorax", BLACK,  5),
+    ("tripo_part_6",  "antenna_L",   "head",   BONE,   6),
+    ("tripo_part_12", "antenna_R",   "head",   BONE,   12),
+    ("tripo_part_1",  "abdomen",     "thorax", PLUM,   1),
+    ("tripo_part_3",  "wing_L",      "thorax", BLACK,  3),
+    ("tripo_part_2",  "wing_R",      "thorax", BLACK,  2),
+    ("tripo_part_9",  "leg_front_L", "thorax", BONE,   9),
+    ("tripo_part_7|front_upper_leg", "leg_front_R", "thorax", BONE, 7),
+    ("tripo_part_10", "leg_mid_L",   "thorax", BONE,   10),
+    ("tripo_part_11", "leg_mid_R",   "thorax", BONE,   11),
+    ("tripo_part_0",  "leg_hind_L",  "thorax", BONE,   0),
+    ("tripo_part_8",  "leg_hind_R",  "thorax", BONE,   8),
+    ("tripo_part_9_lower",  "leg_front_lower_L", "leg_front_L", BONE, 9),
+    ("tripo_part_7_lower|lower_front_leg", "leg_front_lower_R", "leg_front_R", BONE, 7),
+    ("tripo_part_10_lower", "leg_mid_lower_L",   "leg_mid_L",   BONE, 10),
+    ("tripo_part_11_lower", "leg_mid_lower_R",   "leg_mid_R",   BONE, 11),
+    ("tripo_part_0_lower",  "leg_hind_lower_L",  "leg_hind_L",  BONE, 0),
+    ("tripo_part_8_lower",  "leg_hind_lower_R",  "leg_hind_R",  BONE, 8),
 ]
 
 SCALE = 2.5  # the Tripo moth is ~1 unit long; the app's camera expects ~2.5
@@ -102,16 +113,26 @@ def main():
     V = to_app(V)
     VN = to_app(VN)
 
-    ids = {src: part_vertex_ids(objects[src]) for src, *_ in PARTS}
-    thorax_src = PARTS[0][0]
+    # resolve "a|b" alternatives to the object name that is in the file
+    parts = []
+    for srcs, name, parent, color, tex in PARTS:
+        found = [x for x in srcs.split("|") if x in objects]
+        if not found:
+            if "_lower" not in name:
+                raise SystemExit(f"error: none of {srcs} is in {SRC}")
+            continue                                   # leg not split (yet)
+        parts.append((found[0], name, parent, color, tex))
+
+    ids = {src: part_vertex_ids(objects[src]) for src, *_ in parts}
+    thorax_src = parts[0][0]
     centre = (V[ids[thorax_src]].min(0) + V[ids[thorax_src]].max(0)) / 2
     V = (V - centre) * SCALE
 
     rng = np.random.default_rng(0)
-    name_of = {src: name for src, name, *_ in PARTS}
-    src_of = {name: src for src, name, *_ in PARTS}
+    name_of = {src: name for src, name, *_ in parts}
+    src_of = {name: src for src, name, *_ in parts}
     rig = {"parts": []}
-    for src, name, parent, color in PARTS:
+    for src, name, parent, color, tex in parts:
         pts = V[ids[src]]
         if parent is None:
             pivot = (pts.min(0) + pts.max(0)) / 2
@@ -121,13 +142,13 @@ def main():
                 print(f"warning: {name} does not touch {parent} (gap {gap:.3f}); check its pivot")
         entry = {"name": name, "parent": parent,
                  "pivot": [round(float(x), 5) for x in pivot], "color": color, "source": src}
-        texture = f"textures/{src}_basecolor.jpg"          # relative to models/
+        texture = f"textures/tripo_part_{tex}_basecolor.jpg"     # relative to models/
         if os.path.exists(os.path.join(ROOT, "models", texture)):
             entry["texture"] = texture
         else:
             print(f"note: no texture {texture}")
         rig["parts"].append(entry)
-        print(f"{name:12s} <- {src:14s} pivot {np.round(pivot, 3)}")
+        print(f"{name:18s} <- {src:16s} pivot {np.round(pivot, 3)}")
 
     with open(OUT_RIG, "w") as f:
         json.dump(rig, f, indent=2)

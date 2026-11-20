@@ -53,6 +53,8 @@ var position = [];        // Id -> vec3, extra translation          (global posi
 //    abdomen   x: curl (+ = up)    y: sway sideways         z: twist
 //    wing      x: twist            y: sweep forward/back    z: flap (+ = up)
 //    leg (hip) x: twist            y: swing (- = forward)   z: lift (+ = up)
+//    knee      x: bend (- = fold)  y: twist                 z: sideways
+//              (lower leg parts, "leg_<pos>_lower_<side>")
 //  The root (thorax) is the global orientation and is not limited.
 //  A part can also get its own "limits" in moth.rig.json.
 //
@@ -64,13 +66,15 @@ var jointLimitTable = [
     [ "wing",     [ [ -20, 20 ], [ -30, 20 ], [ -30, 70 ] ] ],
     [ "leg",      [ [ -15, 15 ], [ -40, 40 ], [ -20, 40 ] ] ],
 ];
+var kneeLimits = [ [ -60, 25 ], [ -10, 10 ], [ -15, 15 ] ];
 var defaultLimits = [ [ -45, 45 ], [ -45, 45 ], [ -45, 45 ] ];
 var jointLimits = [];       // Id -> limits, or null (no limits)
 var jointLimitsOn = true;
 
 function limitsFor( name ) {
     var lim = defaultLimits;
-    for ( var i = 0; i < jointLimitTable.length; ++i )
+    if ( name.indexOf( "_lower" ) >= 0 ) lim = kneeLimits;
+    else for ( var i = 0; i < jointLimitTable.length; ++i )
         if ( name.indexOf( jointLimitTable[i][0] ) == 0 ) { lim = jointLimitTable[i][1]; break; }
     if ( name.slice( -2 ) == "_R" )      // mirror y and z for the right side
         lim = [ lim[0], [ -lim[1][1], -lim[1][0] ], [ -lim[2][1], -lim[2][0] ] ];

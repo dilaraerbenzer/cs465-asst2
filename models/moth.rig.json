@@ -132,16 +132,16 @@
       "name": "leg_front_R",
       "parent": "thorax",
       "pivot": [
-        -0.21613,
-        -0.16104,
-        0.17484
+        -0.21601,
+        -0.16123,
+        0.17439
       ],
       "color": [
         0.8,
         0.76,
         0.7
       ],
-      "source": "tripo_part_7",
+      "source": "front_upper_leg",
       "texture": "textures/tripo_part_7_basecolor.jpg"
     },
     {
@@ -207,6 +207,22 @@
       ],
       "source": "tripo_part_8",
       "texture": "textures/tripo_part_8_basecolor.jpg"
+    },
+    {
+      "name": "leg_front_lower_R",
+      "parent": "leg_front_R",
+      "pivot": [
+        -0.35728,
+        -0.36413,
+        0.491
+      ],
+      "color": [
+        0.8,
+        0.76,
+        0.7
+      ],
+      "source": "lower_front_leg",
+      "texture": "textures/tripo_part_7_basecolor.jpg"
     }
   ]
 }

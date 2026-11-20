@@ -119,6 +119,7 @@ function makeJointAxes( axes ) {
 var stack = [];
 var modelViewMatrix;
 
+var groundY = 0;          // lowest point of the model at rest (the feet): the ground level
 var partBuffers = [];     // Id -> { vBuffer, nBuffer, tBuffer, numVertices }
 
 
@@ -222,6 +223,7 @@ function buildMoth( gl, rig, objParts, drawPart ) {
         var pointsArray = [];
         for ( var i = 0; i < mesh.pointsArray.length; ++i ) {
             var v = mesh.pointsArray[i];
+            if ( v[1] < groundY ) groundY = v[1];
             pointsArray.push( vec4( v[0] - pivot[Id][0], v[1] - pivot[Id][1], v[2] - pivot[Id][2], 1.0 ) );
         }
 
